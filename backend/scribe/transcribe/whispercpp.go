@@ -90,6 +90,7 @@ func (p LocalWhisperCpp) Transcribe(ctx context.Context, req Request) (*Result, 
 	if err != nil {
 		return nil, err
 	}
+	StripHallucinations(result)
 	if req.OnProgress != nil {
 		req.OnProgress(1.0, "done")
 	}
