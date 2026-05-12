@@ -6,6 +6,7 @@ import { Topbar } from '@/components/layout/topbar'
 import { DashboardPage } from '@/pages/Dashboard'
 import { DownloadsPage } from '@/pages/Downloads'
 import { TranscriptsPage } from '@/pages/Transcripts'
+import { EditorPage } from '@/pages/Editor'
 import { LogsPage } from '@/pages/Logs'
 import { SettingsPage } from '@/pages/Settings'
 import { AboutPage } from '@/pages/About'
@@ -52,6 +53,7 @@ export function App() {
                   <Route path="/" element={<DashboardPage />} />
                   <Route path="/downloads" element={<DownloadsPage />} />
                   <Route path="/transcripts" element={<TranscriptsPage />} />
+                  <Route path="/editor/:taskID" element={<EditorPage />} />
                   <Route path="/logs" element={<LogsPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/about" element={<AboutPage />} />

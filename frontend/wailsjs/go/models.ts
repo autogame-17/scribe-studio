@@ -40,6 +40,105 @@ export namespace pipeline {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	export class SavedTranscript {
+	    language: string;
+	    model: string;
+	    segments: transcribe.Segment[];
+	    fullText: string;
+	    duration: number;
+	    hits?: proofread.Hit[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SavedTranscript(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.language = source["language"];
+	        this.model = source["model"];
+	        this.segments = this.convertValues(source["segments"], transcribe.Segment);
+	        this.fullText = source["fullText"];
+	        this.duration = source["duration"];
+	        this.hits = this.convertValues(source["hits"], proofread.Hit);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
+export namespace proofread {
+	
+	export class Entry {
+	    id: string;
+	    right: string;
+	    wrong: string[];
+	    category: string;
+	    scope?: string;
+	    source: string;
+	    confidence?: number;
+	    hitCount: number;
+	    createdAt: string;
+	    lastSeen?: string;
+	    contextExample?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Entry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.right = source["right"];
+	        this.wrong = source["wrong"];
+	        this.category = source["category"];
+	        this.scope = source["scope"];
+	        this.source = source["source"];
+	        this.confidence = source["confidence"];
+	        this.hitCount = source["hitCount"];
+	        this.createdAt = source["createdAt"];
+	        this.lastSeen = source["lastSeen"];
+	        this.contextExample = source["contextExample"];
+	    }
+	}
+	export class Hit {
+	    segmentIndex: number;
+	    start: number;
+	    end: number;
+	    entryID: string;
+	    original: string;
+	    replacement: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Hit(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.segmentIndex = source["segmentIndex"];
+	        this.start = source["start"];
+	        this.end = source["end"];
+	        this.entryID = source["entryID"];
+	        this.original = source["original"];
+	        this.replacement = source["replacement"];
+	    }
+	}
 
 }
 
@@ -230,44 +329,6 @@ export namespace transcribe {
 	        this.end = source["end"];
 	        this.text = source["text"];
 	    }
-	}
-	export class Result {
-	    language: string;
-	    model: string;
-	    segments: Segment[];
-	    fullText: string;
-	    duration: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new Result(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.language = source["language"];
-	        this.model = source["model"];
-	        this.segments = this.convertValues(source["segments"], Segment);
-	        this.fullText = source["fullText"];
-	        this.duration = source["duration"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 
 }

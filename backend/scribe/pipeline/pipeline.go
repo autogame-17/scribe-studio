@@ -15,6 +15,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/autogame-17/scribe-studio/backend/scribe/media"
+	"github.com/autogame-17/scribe-studio/backend/scribe/proofread"
 	screbuntime "github.com/autogame-17/scribe-studio/backend/scribe/runtime"
 	"github.com/autogame-17/scribe-studio/backend/scribe/transcribe"
 	"wx_channel/pkg/sphkit"
@@ -62,6 +63,7 @@ type Pipeline struct {
 	ctx      context.Context
 	kitFn    KitProvider
 	provider transcribe.Provider
+	glossary *proofread.Glossary
 
 	state *State
 
@@ -80,10 +82,17 @@ func New(ctx context.Context, kitFn KitProvider) (*Pipeline, error) {
 	if err != nil {
 		return nil, err
 	}
+	g, err := proofread.Load()
+	if err != nil {
+		// Non-fatal: missing glossary just means no deterministic
+		// pass, the pipeline still produces raw whisper output.
+		g = nil
+	}
 	return &Pipeline{
 		ctx:         ctx,
 		kitFn:       kitFn,
 		provider:    transcribe.DefaultProvider(),
+		glossary:    g,
 		state:       st,
 		jobs:        make(chan string, 32),
 		inFlight:    map[string]struct{}{},
@@ -91,6 +100,10 @@ func New(ctx context.Context, kitFn KitProvider) (*Pipeline, error) {
 		autoEnabled: true,
 	}, nil
 }
+
+// Glossary exposes the shared glossary so App can wire up its CRUD
+// bindings without another Load().
+func (p *Pipeline) Glossary() *proofread.Glossary { return p.glossary }
 
 // SetAutoEnabled toggles whether the watcher enqueues new downloads
 // automatically. Manual re-transcribe still works when disabled.
@@ -349,13 +362,15 @@ func (p *Pipeline) runJob(job *Job) error {
 	job.Language = result.Language
 	job.Duration = result.Duration
 
-	// Stage 3: save (JSON + SRT)
+	// Stage 3: save (JSON + SRT). Apply glossary first so the saved
+	// artifacts are already post-deterministic-replacement.
 	job.Stage = StageSaving
 	job.ProgressMsg = "保存"
 	job.UpdatedAt = nowISO()
 	p.upsertJob(*job)
 
-	jsonPath, err := saveTranscriptJSON(job.TaskID, result)
+	saved := applyGlossary(p.glossary, result)
+	jsonPath, err := saveTranscriptJSON(job.TaskID, saved)
 	if err != nil {
 		return fmt.Errorf("save json: %w", err)
 	}

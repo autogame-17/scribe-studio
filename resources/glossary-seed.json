@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "note": "Seed glossary ported from writing/media/interviews/raw/clean_transcripts.py. Entries are grouped by category; each has an array of 'wrong' spellings (case-insensitive match, longest-first at apply time) and a canonical 'right' form. Scribe copies this file into AppSupport/Scribe/glossary.json on first launch; subsequent edits happen there and this file is never mutated.",
+  "entries": [
+    { "id": "seed-evolver",     "right": "Evolver",     "wrong": ["evolver", "伊沃弗", "依沃弗", "依沃", "伊沃"], "category": "brand",  "source": "seed" },
+    { "id": "seed-evomap",      "right": "EvoMap",      "wrong": ["evo map", "evomap", "伊沃麦普", "依沃麦普"],    "category": "brand",  "source": "seed" },
+    { "id": "seed-openclaw",    "right": "OpenClaw",    "wrong": ["open claw", "openclaw"],                          "category": "brand",  "source": "seed" },
+    { "id": "seed-termux",      "right": "Termux",      "wrong": ["termux", "特木克斯"],                             "category": "brand",  "source": "seed" },
+    { "id": "seed-capsule",     "right": "Capsule",     "wrong": ["capsule", "卡普索"],                              "category": "brand",  "source": "seed" },
+    { "id": "seed-gcp",         "right": "GCP",         "wrong": ["gcp"],                                            "category": "brand",  "source": "seed" },
+    { "id": "seed-maqi-garden", "right": "麦琪的花园",   "wrong": ["麦奇的花园", "卖奇的花园"],                        "category": "brand",  "source": "seed" },
+
+    { "id": "seed-gep",         "right": "GEP",         "wrong": ["gep", "GDP"],                                      "category": "term",   "source": "seed" },
+    { "id": "seed-vibe-coding", "right": "Vibe Coding", "wrong": ["vibe coding", "wife coding", "web coding"],        "category": "term",   "source": "seed" },
+    { "id": "seed-agent",       "right": "Agent",       "wrong": ["agent", "艾真特"],                                 "category": "term",   "source": "seed" },
+    { "id": "seed-skill",       "right": "Skill",       "wrong": ["skill"],                                          "category": "term",   "source": "seed" },
+    { "id": "seed-gene",        "right": "Gene",        "wrong": ["gene", "基恩"],                                    "category": "term",   "source": "seed" },
+
+    { "id": "seed-haoyang-1",   "right": "张昊阳",       "wrong": ["张浩阳"],                                          "category": "person", "source": "seed" },
+    { "id": "seed-haoyang-2",   "right": "昊阳",         "wrong": ["浩阳"],                                            "category": "person", "source": "seed" }
+  ]
+}

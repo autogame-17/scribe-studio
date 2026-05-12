@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Film, FolderOpen, RefreshCw, FileText } from 'lucide-react'
+import { Film, FolderOpen, RefreshCw, FileText, PenLine } from 'lucide-react'
 import {
   ListTranscripts,
   RetryTranscribe,
@@ -18,6 +18,7 @@ import type { pipeline } from '../../wailsjs/go/models'
 import { EventsOn } from '../../wailsjs/runtime/runtime'
 import { TranscribeProgress } from '@/components/TranscribeProgress'
 import { toast } from 'sonner'
+import { useNavigate } from 'react-router-dom'
 
 type Job = pipeline.Job
 
@@ -97,6 +98,7 @@ export function TranscriptsPage() {
 }
 
 function JobRow({ job }: { job: Job }) {
+  const navigate = useNavigate()
   const title = useMemo(() => {
     const raw = job.title || job.videoPath.split('/').pop() || job.taskID
     const idx = raw.indexOf('#')
@@ -115,6 +117,10 @@ function JobRow({ job }: { job: Job }) {
   async function reveal() {
     if (job.srtPath) return OpenInFinder(job.srtPath)
     if (job.videoPath) return OpenInFinder(job.videoPath)
+  }
+
+  function openEditor() {
+    navigate(`/editor/${encodeURIComponent(job.taskID)}`)
   }
 
   return (
@@ -156,6 +162,17 @@ function JobRow({ job }: { job: Job }) {
 
       <div className="flex shrink-0 items-center gap-2">
         <TranscribeProgress job={job} />
+        {job.stage === 'done' && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1 px-2"
+            onClick={openEditor}
+            title="打开编辑器"
+          >
+            <PenLine className="h-3.5 w-3.5" /> 编辑
+          </Button>
+        )}
         {job.stage === 'done' && job.srtPath && (
           <Button
             variant="ghost"
