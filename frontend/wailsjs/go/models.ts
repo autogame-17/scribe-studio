@@ -85,6 +85,73 @@ export namespace pipeline {
 
 export namespace proofread {
 	
+	export class BedrockSettings {
+	    region: string;
+	    accessKey: string;
+	    secretKey: string;
+	    model: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BedrockSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.region = source["region"];
+	        this.accessKey = source["accessKey"];
+	        this.secretKey = source["secretKey"];
+	        this.model = source["model"];
+	    }
+	}
+	export class GeminiSettings {
+	    apiKey: string;
+	    model: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GeminiSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.apiKey = source["apiKey"];
+	        this.model = source["model"];
+	    }
+	}
+	export class AISettings {
+	    provider: string;
+	    gemini: GeminiSettings;
+	    bedrock: BedrockSettings;
+	
+	    static createFrom(source: any = {}) {
+	        return new AISettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.provider = source["provider"];
+	        this.gemini = this.convertValues(source["gemini"], GeminiSettings);
+	        this.bedrock = this.convertValues(source["bedrock"], BedrockSettings);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class Entry {
 	    id: string;
 	    right: string;
@@ -117,6 +184,29 @@ export namespace proofread {
 	        this.contextExample = source["contextExample"];
 	    }
 	}
+	export class Fix {
+	    id: string;
+	    segmentIndex: number;
+	    original: string;
+	    suggested: string;
+	    reason: string;
+	    type: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Fix(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.segmentIndex = source["segmentIndex"];
+	        this.original = source["original"];
+	        this.suggested = source["suggested"];
+	        this.reason = source["reason"];
+	        this.type = source["type"];
+	    }
+	}
+	
 	export class Hit {
 	    segmentIndex: number;
 	    start: number;
@@ -138,6 +228,62 @@ export namespace proofread {
 	        this.original = source["original"];
 	        this.replacement = source["replacement"];
 	    }
+	}
+	export class NewTerm {
+	    id: string;
+	    term: string;
+	    wrongs: string[];
+	    evidence: string;
+	    confidence: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new NewTerm(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.term = source["term"];
+	        this.wrongs = source["wrongs"];
+	        this.evidence = source["evidence"];
+	        this.confidence = source["confidence"];
+	    }
+	}
+	export class ProofreadResult {
+	    fixes: Fix[];
+	    newTerms: NewTerm[];
+	    model: string;
+	    createdAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProofreadResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.fixes = this.convertValues(source["fixes"], Fix);
+	        this.newTerms = this.convertValues(source["newTerms"], NewTerm);
+	        this.model = source["model"];
+	        this.createdAt = source["createdAt"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }

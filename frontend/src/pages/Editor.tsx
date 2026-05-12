@@ -8,6 +8,7 @@ import {
   RefreshCw,
   BookOpen,
   Film,
+  Sparkles,
 } from 'lucide-react'
 import {
   Card,
@@ -29,6 +30,7 @@ import {
 import type { pipeline, transcribe } from '../../wailsjs/go/models'
 import { toast } from 'sonner'
 import { GlossaryDrawer } from '@/components/GlossaryDrawer'
+import { ProofreadDrawer } from '@/components/ProofreadDrawer'
 
 type Segment = transcribe.Segment
 type Saved = pipeline.SavedTranscript
@@ -45,6 +47,7 @@ export function EditorPage() {
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [proofreadOpen, setProofreadOpen] = useState(false)
 
   const load = useCallback(async () => {
     if (!taskID) return
@@ -173,6 +176,13 @@ export function EditorPage() {
         </button>
         <div className="flex gap-2">
           <Button
+            size="sm"
+            onClick={() => setProofreadOpen(true)}
+            className="gap-1.5 bg-violet-600 text-white hover:bg-violet-500"
+          >
+            <Sparkles className="h-3.5 w-3.5" /> AI 校对
+          </Button>
+          <Button
             variant="outline"
             size="sm"
             onClick={() => setDrawerOpen(true)}
@@ -257,6 +267,16 @@ export function EditorPage() {
       </Card>
 
       <GlossaryDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <ProofreadDrawer
+        open={proofreadOpen}
+        onClose={() => setProofreadOpen(false)}
+        taskID={taskID}
+        onApplied={(s) => {
+          setSaved(s)
+          setSegments(s.segments ?? [])
+          setDirty(false)
+        }}
+      />
     </div>
   )
 }
