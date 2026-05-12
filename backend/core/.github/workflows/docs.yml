@@ -1,0 +1,56 @@
+name: Deploy Docs (VitePress)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect docs-related changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            docs:
+              - 'docs/**'
+
+      - name: Skip if no docs changes
+        if: steps.changes.outputs.docs != 'true'
+        run: echo "No docs changes, skip deploy."
+
+      - name: Setup Node
+        if: steps.changes.outputs.docs == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: docs/package.json
+
+      - name: Install dependencies
+        if: steps.changes.outputs.docs == 'true'
+        working-directory: docs
+        run: npm ci
+
+      - name: Build VitePress site
+        if: steps.changes.outputs.docs == 'true'
+        working-directory: docs
+        run: npm run build
+
+      - name: Deploy to docs branch
+        if: steps.changes.outputs.docs == 'true'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/.vitepress/dist
+          publish_branch: docs

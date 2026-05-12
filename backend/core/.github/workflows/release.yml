@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    name: Release
+    runs-on: ubuntu-latest
+    env:
+      MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
+      MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+      # TODO: Temporarily disabled macOS notarization
+      # NOTARY_PRIVATE_KEY: ${{ secrets.NOTARY_PRIVATE_KEY }}
+      # NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+      # NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.20'
+
+      - name: Install cross-compiler for windows
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64 g++-mingw-w64
+
+      # TODO: Temporarily disabled SunnyNet build
+      # - name: Patch SunnyNet for MinGW
+      #   run: |
+      #     go mod vendor
+      #     SUNNYNET_DIR="vendor/github.com/qtgolang/SunnyNet"
+      #
+      #     # Fix case-sensitive filename issue (Linux is case-sensitive)
+      #     mv $SUNNYNET_DIR/src/ProcessDrv/Proxifier/proxifier.hpp $SUNNYNET_DIR/src/ProcessDrv/Proxifier/Proxifier.hpp
+      #
+      #     # Patch header file - rename structs and types to avoid MinGW conflicts
+      #     sed -i 's/typedef struct _MIB_TCPROW2 {/typedef struct _MIB_TCPROW2_CUSTOM {/' $SUNNYNET_DIR/src/iphlpapi/c_iphlpapi_tcp.h
+      #     sed -i 's/} MIB_TCPROW2, \*PMIB_TCPROW2;/} MIB_TCPROW2_CUSTOM, *PMIB_TCPROW2_CUSTOM;/' $SUNNYNET_DIR/src/iphlpapi/c_iphlpapi_tcp.h
+      #     sed -i 's/typedef struct _MIB_TCPTABLE2 {/typedef struct _MIB_TCPTABLE2_CUSTOM {/' $SUNNYNET_DIR/src/iphlpapi/c_iphlpapi_tcp.h
+      #     sed -i 's/MIB_TCPROW2 table\[ANY_SIZE\];/MIB_TCPROW2_CUSTOM table[ANY_SIZE];/' $SUNNYNET_DIR/src/iphlpapi/c_iphlpapi_tcp.h
+      #     sed -i 's/} MIB_TCPTABLE2, \*PMIB_TCPTABLE2;/} MIB_TCPTABLE2_CUSTOM, *PMIB_TCPTABLE2_CUSTOM;/' $SUNNYNET_DIR/src/iphlpapi/c_iphlpapi_tcp.h
+      #     sed -i 's/typedef DWORD (WINAPI \* GetTcpTable2)(PMIB_TCPTABLE2 TcpTable, PULONG SizePointer, BOOL Order);/typedef DWORD (WINAPI * GetTcpTable2_CUSTOM)(PMIB_TCPTABLE2_CUSTOM TcpTable, PULONG SizePointer, BOOL Order);/' $SUNNYNET_DIR/src/iphlpapi/c_iphlpapi_tcp.h
+      #
+      #     # Patch C file - use renamed types everywhere
+      #     sed -i 's/GetTcpTable2 pGetTcpTable2;/GetTcpTable2_CUSTOM pGetTcpTable2;/' $SUNNYNET_DIR/src/iphlpapi/c_iphlpapi_tcp.c
+      #     sed -i 's/(GetTcpTable2)/(GetTcpTable2_CUSTOM)/g' $SUNNYNET_DIR/src/iphlpapi/c_iphlpapi_tcp.c
+      #     sed -i 's/(PMIB_TCPTABLE2)/(PMIB_TCPTABLE2_CUSTOM)/g' $SUNNYNET_DIR/src/iphlpapi/c_iphlpapi_tcp.c
+      #     sed -i 's/PMIB_TCPTABLE2 pTcpTable;/PMIB_TCPTABLE2_CUSTOM pTcpTable;/' $SUNNYNET_DIR/src/iphlpapi/c_iphlpapi_tcp.c
+      #     sed -i 's/PMIB_TCPTABLE2 tcpTable/PMIB_TCPTABLE2_CUSTOM tcpTable/g' $SUNNYNET_DIR/src/iphlpapi/c_iphlpapi_tcp.c
+      #     sed -i 's/pTcpTable = (MIB_TCPTABLE2\*)/pTcpTable = (MIB_TCPTABLE2_CUSTOM*)/g' $SUNNYNET_DIR/src/iphlpapi/c_iphlpapi_tcp.c
+      #     sed -i 's/tcpTable = (MIB_TCPTABLE2\*)/tcpTable = (MIB_TCPTABLE2_CUSTOM*)/g' $SUNNYNET_DIR/src/iphlpapi/c_iphlpapi_tcp.c
+      #     sed -i 's/MIB_TCPROW2 \*row/MIB_TCPROW2_CUSTOM *row/g' $SUNNYNET_DIR/src/iphlpapi/c_iphlpapi_tcp.c
+
+
+      - name: Generate Windows resources (.syso)
+        run: |
+          set -e
+          go run github.com/tc-hib/go-winres@latest make --in ./build/winres.json --arch amd64
+          go run github.com/tc-hib/go-winres@latest make --in ./build/winres.json --arch arm64
+
+      # TODO: Temporarily disabled macOS notarization
+      # - name: Install rcodesign
+      #   run: |
+      #     set -e
+      #     curl -L -o rcodesign.tar.gz https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign%2F0.22.0/apple-codesign-0.22.0-x86_64-unknown-linux-musl.tar.gz
+      #     tar -xvf rcodesign.tar.gz
+      #     mv apple-codesign-0.22.0-x86_64-unknown-linux-musl/rcodesign /usr/local/bin/
+      #     rm -rf rcodesign.tar.gz apple-codesign-0.22.0-x86_64-unknown-linux-musl
+
+      - name: Prepare secrets
+        run: |
+          set -e
+          echo "${{ secrets.MAC_CERT_P12 }}" | base64 --decode > cert.p12
+          # TODO: Temporarily disabled macOS notarization
+          # echo "${{ secrets.NOTARY_PRIVATE_KEY }}" | base64 --decode > AuthKey.p8
+
+      - name: Build with GoReleaser (skip publish & validate)
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --config ./build/goreleaser.yaml --skip=publish,validate --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAC_CERT_P12_FILE: cert.p12
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+
+      # TODO: Temporarily disabled macOS notarization
+      # - name: Create API key JSON for notarization
+      #   run: |
+      #     rcodesign encode-app-store-connect-api-key \
+      #       "${{ secrets.NOTARY_ISSUER_ID }}" \
+      #       "${{ secrets.NOTARY_KEY_ID }}" \
+      #       AuthKey.p8 \
+      #       > api-key.json
+      #
+      # - name: Notarize macOS archives
+      #   run: |
+      #     set -e
+      #     for file in dist/*darwin*.zip; do
+      #       if [ -f "$file" ]; then
+      #         echo "Notarizing $file..."
+      #         rcodesign notary-submit \
+      #           --api-key-path api-key.json \
+      #           --wait \
+      #           "$file"
+      #       fi
+      #     done
+
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*checksums.txt
