@@ -1,28 +1,75 @@
-import {useState} from 'react';
-import logo from './assets/images/logo-universal.png';
-import './App.css';
-import {Greet} from "../wailsjs/go/main/App";
+import { useEffect, useState } from 'react'
+import { HashRouter, Route, Routes } from 'react-router-dom'
+import { Toaster } from 'sonner'
+import { Sidebar } from '@/components/layout/sidebar'
+import { Topbar } from '@/components/layout/topbar'
+import { DashboardPage } from '@/pages/Dashboard'
+import { DownloadsPage } from '@/pages/Downloads'
+import { LogsPage } from '@/pages/Logs'
+import { SettingsPage } from '@/pages/Settings'
+import { AboutPage } from '@/pages/About'
+import { GetProxyStatus } from '../wailsjs/go/scribe/App'
 
-function App() {
-    const [resultText, setResultText] = useState("Please enter your name below 👇");
-    const [name, setName] = useState('');
-    const updateName = (e: any) => setName(e.target.value);
-    const updateResultText = (result: string) => setResultText(result);
+type ProxyState = 'running' | 'stopped' | 'error' | 'starting'
 
-    function greet() {
-        Greet(name).then(updateResultText);
+export function App() {
+  const [status, setStatus] = useState<ProxyState>('stopped')
+
+  useEffect(() => {
+    let cancelled = false
+    async function check() {
+      try {
+        const s = await GetProxyStatus()
+        if (cancelled) return
+        if (s.running) setStatus('running')
+        else if (s.lastError) setStatus('error')
+        else setStatus('stopped')
+      } catch {
+        if (!cancelled) setStatus('error')
+      }
     }
+    check()
+    const id = setInterval(check, 3000)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [])
 
-    return (
-        <div id="App">
-            <img src={logo} id="logo" alt="logo"/>
-            <div id="result" className="result">{resultText}</div>
-            <div id="input" className="input-box">
-                <input id="name" className="input" onChange={updateName} autoComplete="off" name="input" type="text"/>
-                <button className="btn" onClick={greet}>Greet</button>
-            </div>
+  return (
+    <HashRouter>
+      <div className="flex h-screen overflow-hidden bg-background text-foreground selection:bg-primary/30">
+        {/* Subtle ambient gradient — same idea as Prism's hero gradient */}
+        <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.10),rgba(255,255,255,0))]" />
+        <div className="z-10 flex h-full w-full">
+          <Sidebar />
+          <div className="relative flex flex-1 flex-col overflow-hidden">
+            <Topbar status={status} />
+            <main className="sph-scroll flex-1 overflow-y-auto p-8">
+              <div className="mx-auto max-w-5xl">
+                <Routes>
+                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/downloads" element={<DownloadsPage />} />
+                  <Route path="/logs" element={<LogsPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/about" element={<AboutPage />} />
+                </Routes>
+              </div>
+            </main>
+          </div>
         </div>
-    )
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            classNames: {
+              toast:
+                'group bg-card text-card-foreground border-border/60 shadow-lg rounded-xl',
+            },
+          }}
+        />
+      </div>
+    </HashRouter>
+  )
 }
 
 export default App

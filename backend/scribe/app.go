@@ -1,4 +1,4 @@
-package sph
+package scribe
 
 import (
 	"context"

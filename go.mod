@@ -1,4 +1,4 @@
-module github.com/autogame-17/sph-downloader
+module github.com/autogame-17/scribe-studio
 
 go 1.23.0
 

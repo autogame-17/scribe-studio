@@ -1,4 +1,4 @@
-package sph
+package scribe
 
 // VersionInfo surfaces the build identity to the About screen.
 type VersionInfo struct {

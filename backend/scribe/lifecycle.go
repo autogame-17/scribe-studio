@@ -1,4 +1,4 @@
-package sph
+package scribe
 
 import (
 	"wx_channel/pkg/sphkit"
