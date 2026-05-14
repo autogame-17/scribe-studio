@@ -106,5 +106,5 @@ if (Test-Path $whisperExe) {
     Write-Host "[fetch-bins] whisper-cli -> $whisperExe"
 }
 
-Write-Host "[fetch-bins] contents of $binDir:"
+Write-Host "[fetch-bins] contents of ${binDir}:"
 Get-ChildItem $binDir | Format-Table Name, Length
