@@ -68,3 +68,30 @@ func (a *App) GetProxyStatus() ProxyStatus {
 	s := a.kit.Status()
 	return ProxyStatus(s)
 }
+
+// SetProxyAddr updates the persisted host + port for the API (and by
+// extension the interceptor at port-1). We construct the kit lazily if
+// the user is configuring before ever starting the proxy. Returns nil
+// even when the proxy is currently running — the new values won't take
+// effect until the next Start, and the UI is responsible for surfacing
+// that ("点保存后重启代理生效").
+func (a *App) SetProxyAddr(host string, port int) error {
+	a.mu.Lock()
+	if a.kit == nil {
+		k, err := sphkit.New(BuildVersion, BuildMode)
+		if err != nil {
+			a.mu.Unlock()
+			logbus.Error("proxy", "init kit for set: %v", err)
+			return err
+		}
+		a.kit = k
+	}
+	kit := a.kit
+	a.mu.Unlock()
+	if err := kit.SetProxyAddr(host, port); err != nil {
+		logbus.Error("proxy", "set addr: %v", err)
+		return err
+	}
+	logbus.Info("proxy", "addr set to %s:%d (restart required)", host, port)
+	return nil
+}

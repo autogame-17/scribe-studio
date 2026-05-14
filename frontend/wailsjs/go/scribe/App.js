@@ -46,6 +46,10 @@ export function GetAISettings() {
   return window['go']['scribe']['App']['GetAISettings']();
 }
 
+export function GetCertStatus() {
+  return window['go']['scribe']['App']['GetCertStatus']();
+}
+
 export function GetConfig() {
   return window['go']['scribe']['App']['GetConfig']();
 }
@@ -64,6 +68,10 @@ export function GetTranscript(arg1) {
 
 export function GetVersion() {
   return window['go']['scribe']['App']['GetVersion']();
+}
+
+export function InstallCert() {
+  return window['go']['scribe']['App']['InstallCert']();
 }
 
 export function ListExternalTasks() {
@@ -92,6 +100,10 @@ export function ListTranscripts() {
 
 export function OpenInFinder(arg1) {
   return window['go']['scribe']['App']['OpenInFinder'](arg1);
+}
+
+export function PickDownloadDir() {
+  return window['go']['scribe']['App']['PickDownloadDir']();
 }
 
 export function ProofreadTranscript(arg1) {
@@ -130,6 +142,14 @@ export function SetAutoTranscribe(arg1) {
   return window['go']['scribe']['App']['SetAutoTranscribe'](arg1);
 }
 
+export function SetDownloadDir(arg1) {
+  return window['go']['scribe']['App']['SetDownloadDir'](arg1);
+}
+
+export function SetProxyAddr(arg1, arg2) {
+  return window['go']['scribe']['App']['SetProxyAddr'](arg1, arg2);
+}
+
 export function StartProxy() {
   return window['go']['scribe']['App']['StartProxy']();
 }
@@ -140,6 +160,10 @@ export function StopProxy() {
 
 export function TestAIConnection(arg1) {
   return window['go']['scribe']['App']['TestAIConnection'](arg1);
+}
+
+export function UninstallCert() {
+  return window['go']['scribe']['App']['UninstallCert']();
 }
 
 export function UpsertGlossary(arg1) {

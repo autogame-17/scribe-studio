@@ -3,14 +3,17 @@ package sphkit
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"sort"
 	"time"
 
+	"github.com/spf13/viper"
 	"go.etcd.io/bbolt"
 
 	"wx_channel/internal/api"
@@ -61,6 +64,55 @@ func (i *Instance) GetConfig() Config {
 		APIAddr:         fmt.Sprintf("%s:%d", apiCfg.Hostname, apiCfg.Port),
 		MaxRunning:      apiCfg.MaxRunning,
 	}
+}
+
+// SetProxyAddr updates the API host + port keys in viper and persists to
+// config.yaml. Existing listeners are *not* restarted — the caller (UI) is
+// expected to surface a "restart proxy" hint, because rebinding ports
+// while requests are in flight risks orphaning sphkit's HTTP server. host
+// is validated only loosely (must be non-empty); port range is checked so
+// we don't write a bogus value that crashes on next Start.
+func (i *Instance) SetProxyAddr(host string, port int) error {
+	if host == "" {
+		return errors.New("host is required")
+	}
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("port out of range: %d", port)
+	}
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	viper.Set("api.hostname", host)
+	viper.Set("api.port", port)
+	return saveViperToCfg(i.cfg.FullPath)
+}
+
+// SetDownloadDir updates download.dir and persists. The path is created
+// if missing so the next download doesn't fall over a "no such directory"
+// error — viper has no notion of "validate this is writable", so we do
+// the eager mkdir here to match what NewAPIConfig does at boot.
+func (i *Instance) SetDownloadDir(path string) error {
+	if path == "" {
+		return errors.New("path is required")
+	}
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		return fmt.Errorf("create download dir: %w", err)
+	}
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	viper.Set("download.dir", path)
+	return saveViperToCfg(i.cfg.FullPath)
+}
+
+// saveViperToCfg writes the in-memory viper state back to disk. We use
+// WriteConfigAs (not WriteConfig) because the config file path is set
+// once at New() and we want to be explicit — WriteConfig would silently
+// pick the first registered config path, which can drift from FullPath
+// after a chdir.
+func saveViperToCfg(fullPath string) error {
+	if fullPath == "" {
+		return errors.New("config path not initialised")
+	}
+	return viper.WriteConfigAs(fullPath)
 }
 
 // rawTask mirrors the subset of wx_channel's /api/task/list entry we need.

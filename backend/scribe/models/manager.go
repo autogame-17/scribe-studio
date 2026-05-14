@@ -61,6 +61,26 @@ var Known = []ModelSpec{
 		Bytes:    1530 * 1024 * 1024,
 		Label:    "Medium · 1.5 GB · 慢",
 	},
+	// Quantized variants — same architecture as the FP16 baseline but with
+	// ggml's q5_0 weights, which roughly halves the file size and runs
+	// faster on Apple Silicon Metal at a barely-perceptible quality cost.
+	// We expose them as separate entries (rather than a "precision" toggle)
+	// because the file URLs are independent and the user picks one or the
+	// other — never both — when downloading.
+	{
+		Key:      "medium-q5_0",
+		Filename: "ggml-medium-q5_0.bin",
+		URL:      "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium-q5_0.bin",
+		Bytes:    540 * 1024 * 1024,
+		Label:    "Medium (q5_0) · 540 MB · 较快",
+	},
+	{
+		Key:      "large-v3-q5_0",
+		Filename: "ggml-large-v3-q5_0.bin",
+		URL:      "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-q5_0.bin",
+		Bytes:    1080 * 1024 * 1024,
+		Label:    "Large v3 (q5_0) · 1.1 GB · 最佳质量",
+	},
 }
 
 func SpecByKey(key string) (ModelSpec, bool) {

@@ -3,8 +3,8 @@
 import {pipeline} from '../models';
 import {proofread} from '../models';
 import {external} from '../models';
-import {sphkit} from '../models';
 import {scribe} from '../models';
+import {sphkit} from '../models';
 import {logbus} from '../models';
 import {transcribe} from '../models';
 
@@ -30,6 +30,8 @@ export function ExportSRT(arg1:string):Promise<string>;
 
 export function GetAISettings():Promise<proofread.AISettings>;
 
+export function GetCertStatus():Promise<scribe.CertStatus>;
+
 export function GetConfig():Promise<sphkit.Config>;
 
 export function GetProxyStatus():Promise<scribe.ProxyStatus>;
@@ -39,6 +41,8 @@ export function GetTranscribeSettings():Promise<scribe.TranscribeSettings>;
 export function GetTranscript(arg1:string):Promise<pipeline.SavedTranscript>;
 
 export function GetVersion():Promise<scribe.VersionInfo>;
+
+export function InstallCert():Promise<void>;
 
 export function ListExternalTasks():Promise<Array<external.Task>>;
 
@@ -53,6 +57,8 @@ export function ListTasks(arg1:string,arg2:number,arg3:number):Promise<sphkit.Ta
 export function ListTranscripts():Promise<Array<pipeline.Job>>;
 
 export function OpenInFinder(arg1:string):Promise<void>;
+
+export function PickDownloadDir():Promise<string>;
 
 export function ProofreadTranscript(arg1:string):Promise<proofread.ProofreadResult>;
 
@@ -72,10 +78,16 @@ export function SetAISettings(arg1:proofread.AISettings):Promise<void>;
 
 export function SetAutoTranscribe(arg1:boolean):Promise<void>;
 
+export function SetDownloadDir(arg1:string):Promise<void>;
+
+export function SetProxyAddr(arg1:string,arg2:number):Promise<void>;
+
 export function StartProxy():Promise<void>;
 
 export function StopProxy():Promise<void>;
 
 export function TestAIConnection(arg1:proofread.AISettings):Promise<string>;
+
+export function UninstallCert():Promise<void>;
 
 export function UpsertGlossary(arg1:proofread.Entry):Promise<proofread.Entry>;

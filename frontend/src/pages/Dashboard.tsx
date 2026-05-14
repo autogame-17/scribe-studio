@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { useEffect, useState } from 'react'
-import { Play, Square, ShieldCheck, ShieldAlert, FolderOpen, Copy } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Play, Square, ShieldCheck, ShieldAlert, FolderOpen, Copy, Loader2 } from 'lucide-react'
 import {
   Card,
   CardContent,
@@ -19,6 +19,9 @@ import {
   StartProxy,
   StopProxy,
   ListModels,
+  GetCertStatus,
+  InstallCert,
+  UninstallCert,
 } from '../../wailsjs/go/scribe/App'
 import type { scribe, sphkit } from '../../wailsjs/go/models'
 import { Link } from 'react-router-dom'
@@ -27,6 +30,7 @@ import { AlertTriangle } from 'lucide-react'
 type Status = scribe.ProxyStatus
 type Version = scribe.VersionInfo
 type Config = sphkit.Config
+type CertStatus = scribe.CertStatus
 
 export function DashboardPage() {
   const [status, setStatus] = useState<Status | null>(null)
@@ -34,6 +38,16 @@ export function DashboardPage() {
   const [config, setConfig] = useState<Config | null>(null)
   const [busy, setBusy] = useState(false)
   const [noModel, setNoModel] = useState(false)
+  const [cert, setCert] = useState<CertStatus | null>(null)
+  const [certBusy, setCertBusy] = useState(false)
+
+  const refreshCert = useCallback(async () => {
+    try {
+      setCert(await GetCertStatus())
+    } catch {
+      /* keep last known state on transient errors */
+    }
+  }, [])
 
   useEffect(() => {
     GetVersion().then(setVersion).catch(() => {})
@@ -41,6 +55,7 @@ export function DashboardPage() {
     ListModels()
       .then((ms) => setNoModel(!(ms ?? []).some((m) => m.installed)))
       .catch(() => {})
+    refreshCert()
     let cancelled = false
     async function pull() {
       try {
@@ -56,7 +71,7 @@ export function DashboardPage() {
       cancelled = true
       clearInterval(id)
     }
-  }, [])
+  }, [refreshCert])
 
   async function toggle() {
     setBusy(true)
@@ -84,7 +99,39 @@ export function DashboardPage() {
     toast.success('代理地址已复制')
   }
 
-  const certInstalled = false // TODO: wire to GetCertStatus once it lands
+  const certInstalled = !!cert?.installed
+
+  async function installCert() {
+    setCertBusy(true)
+    toast.message('系统会弹窗要求管理员密码授权', {
+      description: '本地 CA 必须加入系统钥匙串才能拦截 HTTPS。',
+    })
+    try {
+      await InstallCert()
+      toast.success('证书已安装')
+      await refreshCert()
+    } catch (e) {
+      const msg = String(e).replace(/^Error: /, '')
+      toast.error('安装失败：' + msg)
+    } finally {
+      setCertBusy(false)
+    }
+  }
+
+  async function uninstallCert() {
+    setCertBusy(true)
+    toast.message('系统会弹窗要求管理员密码授权')
+    try {
+      await UninstallCert()
+      toast.success('证书已卸载')
+      await refreshCert()
+    } catch (e) {
+      const msg = String(e).replace(/^Error: /, '')
+      toast.error('卸载失败：' + msg)
+    } finally {
+      setCertBusy(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -178,12 +225,41 @@ export function DashboardPage() {
                 <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
               )}
               <p className="leading-relaxed">
-                视频号下载依赖本地 MITM，需要把 CA 证书加入系统信任。证书安装流程将在下一版本内置。
+                视频号下载依赖本地 MITM，需要把 CA 证书（CN={cert?.name ?? 'SunnyNet'}）加入系统信任。点击下方按钮一键安装；macOS 会弹窗要求管理员授权。
               </p>
             </div>
-            <Button variant="outline" size="sm" disabled className="w-full">
-              安装证书（即将推出）
-            </Button>
+            {certInstalled ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={uninstallCert}
+                disabled={certBusy}
+              >
+                {certBusy ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> 处理中
+                  </>
+                ) : (
+                  '卸载证书'
+                )}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={installCert}
+                disabled={certBusy}
+              >
+                {certBusy ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> 安装中
+                  </>
+                ) : (
+                  '安装证书'
+                )}
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>

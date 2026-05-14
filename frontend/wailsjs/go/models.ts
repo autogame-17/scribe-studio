@@ -468,6 +468,20 @@ export namespace proofread {
 
 export namespace scribe {
 	
+	export class CertStatus {
+	    installed: boolean;
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CertStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.installed = source["installed"];
+	        this.name = source["name"];
+	    }
+	}
 	export class ModelSummary {
 	    key: string;
 	    filename: string;

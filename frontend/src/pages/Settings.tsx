@@ -26,11 +26,16 @@ import {
   DownloadModel,
   GetTranscribeSettings,
   SetAutoTranscribe,
+  GetConfig,
+  SetProxyAddr,
+  SetDownloadDir,
+  PickDownloadDir,
 } from '../../wailsjs/go/scribe/App'
 import { EventsOn } from '../../wailsjs/runtime/runtime'
-import type { proofread, scribe } from '../../wailsjs/go/models'
+import type { proofread, scribe, sphkit } from '../../wailsjs/go/models'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { FolderOpen, RefreshCw } from 'lucide-react'
 
 type Provider = 'none' | 'gemini' | 'bedrock' | 'mock'
 type AISettings = proofread.AISettings
@@ -68,25 +73,229 @@ export function SettingsPage() {
       </div>
 
       {tab === 'ai' && <AITab />}
-      {tab === 'proxy' && <PlaceholderTab title="代理" note="host/port/系统代理开关" />}
-      {tab === 'download' && <PlaceholderTab title="下载" note="下载目录、并发、命名模板" />}
+      {tab === 'proxy' && <ProxyTab />}
+      {tab === 'download' && <DownloadTab />}
       {tab === 'transcribe' && <TranscribeTab />}
       {tab === 'advanced' && <AdvancedTab />}
     </div>
   )
 }
 
-function PlaceholderTab({ title, note }: { title: string; note: string }) {
+type ProxyConfig = sphkit.Config
+
+// ProxyTab edits api.hostname / api.port. The interceptor address is
+// derived (port - 1) by sphkit so we show it but don't let the user edit
+// it directly — keeps the two ports a known offset apart and matches the
+// upstream wx_channel CLI behaviour.
+function ProxyTab() {
+  const [cfg, setCfg] = useState<ProxyConfig | null>(null)
+  const [host, setHost] = useState('')
+  const [port, setPort] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const refresh = async () => {
+    try {
+      const c = await GetConfig()
+      setCfg(c)
+      // Re-hydrate the editable fields from the live config so a save
+      // always round-trips through the backend rather than trusting our
+      // local state to still match disk.
+      const apiAddr = c.apiAddr || ''
+      const colon = apiAddr.lastIndexOf(':')
+      if (colon > 0) {
+        setHost(apiAddr.slice(0, colon))
+        setPort(apiAddr.slice(colon + 1))
+      }
+    } catch (e) {
+      toast.error(String(e).replace(/^Error: /, ''))
+    }
+  }
+
+  useEffect(() => {
+    refresh()
+  }, [])
+
+  async function save() {
+    const portNum = Number(port)
+    if (!host.trim()) {
+      toast.error('Hostname 不能为空')
+      return
+    }
+    if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) {
+      toast.error('Port 需要是 1-65535 的整数')
+      return
+    }
+    setBusy(true)
+    try {
+      await SetProxyAddr(host.trim(), portNum)
+      toast.success('已保存', { description: '重启代理后生效' })
+      await refresh()
+    } catch (e) {
+      toast.error(String(e).replace(/^Error: /, ''))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!cfg) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-sm text-muted-foreground">
+          读取中…
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{note}</CardDescription>
+        <CardTitle>代理</CardTitle>
+        <CardDescription>
+          API 服务监听地址。拦截端口自动取 API 端口 - 1，启动时由 sphkit 派生。改完需要重启代理（概览页「停止 → 启动」）才生效。
+        </CardDescription>
       </CardHeader>
-      <CardContent className="text-sm text-muted-foreground">
-        这一页的可编辑字段还在路上。相关字段当前从{' '}
-        <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">config.yaml</code>{' '}
-        读取。
+      <CardContent className="space-y-3">
+        <Field label="API Hostname">
+          <input
+            value={host}
+            onChange={(e) => setHost(e.target.value)}
+            placeholder="127.0.0.1"
+            className={inputCls + ' font-mono text-xs'}
+          />
+        </Field>
+        <Field label="API Port">
+          <input
+            value={port}
+            onChange={(e) => setPort(e.target.value)}
+            inputMode="numeric"
+            placeholder="2022"
+            className={inputCls + ' font-mono text-xs'}
+          />
+        </Field>
+        <div className="rounded-md border border-border/40 bg-muted/30 p-3 text-xs text-muted-foreground">
+          <div>
+            拦截端口（只读）：
+            <span className="ml-1 font-mono text-foreground/80">{cfg.interceptorAddr || '—'}</span>
+          </div>
+          <div className="mt-1">
+            当前 API 地址：
+            <span className="ml-1 font-mono text-foreground/80">{cfg.apiAddr || '—'}</span>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="outline" size="sm" onClick={refresh} className="gap-1.5">
+            <RefreshCw className="h-3.5 w-3.5" /> 重读
+          </Button>
+          <Button size="sm" onClick={save} disabled={busy}>
+            {busy ? '保存中…' : '保存'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// DownloadTab edits download.dir. Folder picker uses Wails'
+// OpenDirectoryDialog so the user gets a real native picker. We refuse
+// to save an empty path here even though the backend would error too —
+// keeps the UI honest about what "" actually means (≈ "use OS default").
+function DownloadTab() {
+  const [cfg, setCfg] = useState<ProxyConfig | null>(null)
+  const [dir, setDir] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const refresh = async () => {
+    try {
+      const c = await GetConfig()
+      setCfg(c)
+      setDir(c.downloadDir || '')
+    } catch (e) {
+      toast.error(String(e).replace(/^Error: /, ''))
+    }
+  }
+
+  useEffect(() => {
+    refresh()
+  }, [])
+
+  async function pick() {
+    try {
+      const picked = await PickDownloadDir()
+      if (picked) setDir(picked)
+    } catch (e) {
+      toast.error(String(e).replace(/^Error: /, ''))
+    }
+  }
+
+  async function save() {
+    if (!dir.trim()) {
+      toast.error('请选择一个目录')
+      return
+    }
+    setBusy(true)
+    try {
+      await SetDownloadDir(dir.trim())
+      toast.success('已保存', {
+        description: '新下载会落到这个目录；视频号代理需重启后才会切换',
+      })
+      await refresh()
+    } catch (e) {
+      toast.error(String(e).replace(/^Error: /, ''))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!cfg) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-sm text-muted-foreground">
+          读取中…
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>下载</CardTitle>
+        <CardDescription>
+          所有下载（视频号 + yt-dlp）保存到这个目录。yt-dlp 任务保存后立即生效；视频号代理需要重启才会切换路径。
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Field label="下载目录">
+          <div className="flex items-center gap-2">
+            <input
+              value={dir}
+              onChange={(e) => setDir(e.target.value)}
+              placeholder="/Users/you/Downloads/Scribe"
+              className={inputCls + ' font-mono text-xs'}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 shrink-0 gap-1"
+              onClick={pick}
+              title="浏览…"
+            >
+              <FolderOpen className="h-3.5 w-3.5" /> 浏览
+            </Button>
+          </div>
+        </Field>
+        <div className="text-[11px] text-muted-foreground">
+          并发数（MaxRunning）当前为上游硬编码的 3，可配置化排在 v0.5。
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="outline" size="sm" onClick={refresh} className="gap-1.5">
+            <RefreshCw className="h-3.5 w-3.5" /> 重读
+          </Button>
+          <Button size="sm" onClick={save} disabled={busy}>
+            {busy ? '保存中…' : '保存'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )
@@ -491,6 +700,15 @@ function TranscribeTab() {
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm font-medium">{m.key}</span>
                       {m.installed && <Badge variant="success">已安装</Badge>}
+                      {/* Quantized badge: keys carrying the ggml q5_0
+                          / q8_0 etc. suffix are smaller + faster but
+                          have a (barely visible) quality cost. We tag
+                          them so users can tell at a glance. */}
+                      {/q[0-9]+_[0-9]+/.test(m.key) && (
+                        <Badge variant="outline" className="font-mono text-[10px]">
+                          quantized
+                        </Badge>
+                      )}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">{m.label}</div>
                     {isDownloading && p && (
