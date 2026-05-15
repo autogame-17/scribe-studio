@@ -74,6 +74,10 @@ export function InstallCert() {
   return window['go']['scribe']['App']['InstallCert']();
 }
 
+export function IsChannelsURL(arg1) {
+  return window['go']['scribe']['App']['IsChannelsURL'](arg1);
+}
+
 export function ListExternalTasks() {
   return window['go']['scribe']['App']['ListExternalTasks']();
 }
@@ -100,6 +104,10 @@ export function ListTranscripts() {
 
 export function OpenInFinder(arg1) {
   return window['go']['scribe']['App']['OpenInFinder'](arg1);
+}
+
+export function OpenChannelsURL(arg1) {
+  return window['go']['scribe']['App']['OpenChannelsURL'](arg1);
 }
 
 export function PickDownloadDir() {

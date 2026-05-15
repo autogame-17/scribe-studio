@@ -44,6 +44,8 @@ export function GetVersion():Promise<scribe.VersionInfo>;
 
 export function InstallCert():Promise<void>;
 
+export function IsChannelsURL(arg1:string):Promise<boolean>;
+
 export function ListExternalTasks():Promise<Array<external.Task>>;
 
 export function ListGlossary(arg1:string):Promise<Array<proofread.Entry>>;
@@ -57,6 +59,8 @@ export function ListTasks(arg1:string,arg2:number,arg3:number):Promise<sphkit.Ta
 export function ListTranscripts():Promise<Array<pipeline.Job>>;
 
 export function OpenInFinder(arg1:string):Promise<void>;
+
+export function OpenChannelsURL(arg1:string):Promise<void>;
 
 export function PickDownloadDir():Promise<string>;
 
