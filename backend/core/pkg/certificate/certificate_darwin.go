@@ -8,11 +8,22 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
 func fetchCertificates() ([]Certificate, error) {
-	cmd := exec.Command("security", "find-certificate", "-a")
+	// Search both the user login keychain and the system keychain. The system
+	// keychain is where installCertificate writes (with trust settings); the
+	// default search list of a GUI subprocess can omit it, so we list both
+	// explicitly to keep "is it installed?" consistent with "where did we
+	// install it?".
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("获取用户目录失败，%v\n", err.Error()))
+	}
+	loginKeychain := home + "/Library/Keychains/login.keychain-db"
+	cmd := exec.Command("security", "find-certificate", "-a", loginKeychain, "/Library/Keychains/System.keychain")
 	output, err2 := cmd.Output()
 	if err2 != nil {
 		return nil, errors.New(fmt.Sprintf("获取证书时发生错误，%v\n", err2.Error()))
@@ -65,8 +76,14 @@ func installCertificate(cert_data []byte) error {
 	if err := cert_file.Close(); err != nil {
 		return errors.New(fmt.Sprintf("生成证书失败，%v\n", err.Error()))
 	}
-	cmd := fmt.Sprintf("security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain '%s'", cert_file.Name())
-	ps := exec.Command("bash", "-c", cmd)
+	// Writing to /Library/Keychains/System.keychain requires root. Wrap the
+	// command with osascript "with administrator privileges" so macOS prompts
+	// the user for their password via the native authorization dialog —
+	// otherwise the bare `security` invocation fails with a write-permission
+	// error.
+	inner := fmt.Sprintf("security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain %s", strconv.Quote(cert_file.Name()))
+	script := fmt.Sprintf("do shell script %s with administrator privileges", strconv.Quote(inner))
+	ps := exec.Command("osascript", "-e", script)
 	output, err2 := ps.CombinedOutput()
 	if err2 != nil {
 		return errors.New(fmt.Sprintf("安装证书时发生错误，%v\n", string(output)))
