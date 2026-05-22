@@ -30,6 +30,8 @@ import {
   SetProxyAddr,
   SetDownloadDir,
   PickDownloadDir,
+  GetXiaoyuzhouAuthStatus,
+  SetXiaoyuzhouCredentials,
 } from '../../wailsjs/go/scribe/App'
 import { EventsOn } from '../../wailsjs/runtime/runtime'
 import type { proofread, scribe, sphkit } from '../../wailsjs/go/models'
@@ -200,6 +202,94 @@ function ProxyTab() {
 // OpenDirectoryDialog so the user gets a real native picker. We refuse
 // to save an empty path here even though the backend would error too —
 // keeps the UI honest about what "" actually means (≈ "use OS default").
+function XiaoyuzhouAuthCard() {
+  const [refreshToken, setRefreshToken] = useState('')
+  const [deviceID, setDeviceID] = useState('')
+  const [status, setStatus] = useState<{ configured: boolean; valid: boolean } | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const refresh = async () => {
+    try {
+      const s = await GetXiaoyuzhouAuthStatus()
+      setStatus(s)
+    } catch {
+      setStatus(null)
+    }
+  }
+
+  useEffect(() => {
+    refresh()
+  }, [])
+
+  async function save() {
+    if (!refreshToken.trim() || !deviceID.trim()) {
+      toast.error('请填写 refresh_token 和 device_id')
+      return
+    }
+    setBusy(true)
+    try {
+      await SetXiaoyuzhouCredentials(refreshToken.trim(), deviceID.trim())
+      toast.success('小宇宙凭证已保存')
+      setRefreshToken('')
+      setDeviceID('')
+      await refresh()
+    } catch (e) {
+      toast.error(String(e).replace(/^Error: /, ''))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-medium">小宇宙</div>
+        {status?.valid ? (
+          <Badge variant="outline" className="text-emerald-600 border-emerald-500/40">已登录</Badge>
+        ) : status?.configured ? (
+          <Badge variant="outline" className="text-amber-600 border-amber-500/40">凭证失效</Badge>
+        ) : (
+          <Badge variant="outline">未配置</Badge>
+        )}
+      </div>
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
+        集成 xyz-dl 同款 API。请用抓包或{' '}
+        <a
+          href="https://github.com/shiquda/xyz-dl"
+          className="underline hover:text-foreground"
+          target="_blank"
+          rel="noreferrer"
+        >
+          xyz-dl
+        </a>{' '}
+        获取 refresh_token 与 device_id（须成对匹配）。
+      </p>
+      <Field label="refresh_token">
+        <input
+          type="password"
+          value={refreshToken}
+          onChange={(e) => setRefreshToken(e.target.value)}
+          placeholder="粘贴 refresh_token"
+          className={inputCls + ' font-mono text-xs'}
+        />
+      </Field>
+      <Field label="device_id">
+        <input
+          value={deviceID}
+          onChange={(e) => setDeviceID(e.target.value)}
+          placeholder="x-jike-device-id"
+          className={inputCls + ' font-mono text-xs'}
+        />
+      </Field>
+      <div className="flex justify-end">
+        <Button size="sm" onClick={save} disabled={busy}>
+          {busy ? '验证中…' : '保存凭证'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 function DownloadTab() {
   const [cfg, setCfg] = useState<ProxyConfig | null>(null)
   const [dir, setDir] = useState('')
@@ -262,10 +352,11 @@ function DownloadTab() {
       <CardHeader>
         <CardTitle>下载</CardTitle>
         <CardDescription>
-          所有下载（视频号 + yt-dlp）保存到这个目录。yt-dlp 任务保存后立即生效；视频号代理需要重启才会切换路径。
+          视频号、yt-dlp、小宇宙下载均保存到此目录。yt-dlp / 小宇宙保存后立即生效；视频号代理需重启后切换路径。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        <XiaoyuzhouAuthCard />
         <Field label="下载目录">
           <div className="flex items-center gap-2">
             <input

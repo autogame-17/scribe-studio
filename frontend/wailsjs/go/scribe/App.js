@@ -70,6 +70,14 @@ export function GetVersion() {
   return window['go']['scribe']['App']['GetVersion']();
 }
 
+export function GetXiaoyuzhouAuthStatus() {
+  return window['go']['scribe']['App']['GetXiaoyuzhouAuthStatus']();
+}
+
+export function SetXiaoyuzhouCredentials(arg1, arg2) {
+  return window['go']['scribe']['App']['SetXiaoyuzhouCredentials'](arg1, arg2);
+}
+
 export function InstallCert() {
   return window['go']['scribe']['App']['InstallCert']();
 }

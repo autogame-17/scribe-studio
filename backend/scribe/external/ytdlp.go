@@ -16,6 +16,7 @@ import (
 	"time"
 
 	screbuntime "github.com/autogame-17/scribe-studio/backend/scribe/runtime"
+	"github.com/autogame-17/scribe-studio/backend/scribe/xiaoyuzhou"
 )
 
 // ytdlpProbeTimeout caps how long we wait for `yt-dlp -J` before
@@ -54,9 +55,15 @@ type probeRaw struct {
 // formats — combined video+audio progressive streams when they exist,
 // otherwise the best video-only stream at each height bucket — so the
 // dropdown the user sees is short and meaningful.
+//
+// Xiaoyuzhou (小宇宙) links are routed to the native xiaoyuzhou package
+// (API client informed by xyz-dl / xiaoyuzhoufm-mcp).
 func probe(ctx context.Context, url string, cookieFile string) (ProbeResult, error) {
 	if url == "" {
 		return ProbeResult{}, errors.New("url is required")
+	}
+	if xiaoyuzhou.IsURL(url) {
+		return probeXiaoyuzhou(ctx, url, cookieFile)
 	}
 	bin, err := screbuntime.BinaryPath("yt-dlp")
 	if err != nil {
@@ -301,6 +308,9 @@ func runDownload(
 	downloadDir string,
 	onProgress func(p Progress),
 ) (handle *downloadHandle, finalPathCh <-chan string, errCh <-chan error, err error) {
+	if xiaoyuzhou.IsURL(task.URL) {
+		return runXiaoyuzhouDownload(ctx, task, downloadDir, onProgress)
+	}
 	bin, err := screbuntime.BinaryPath("yt-dlp")
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("yt-dlp not installed: %w", err)

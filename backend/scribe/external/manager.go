@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -304,14 +305,27 @@ func (m *Manager) run(t *Task) {
 		return
 	}
 
-	// Read the final path with a short timeout — the SCRFINAL line is
-	// emitted before yt-dlp exits, so it should already be in the
-	// buffered channel. The timeout is purely defensive against
-	// versions of yt-dlp that change the --print formatting.
-	var finalPath string
-	select {
-	case finalPath = <-finalCh:
-	case <-time.After(2 * time.Second):
+	// Drain final paths (yt-dlp sends one; Xiaoyuzhou may send several).
+	var finalPaths []string
+	for {
+		select {
+		case p := <-finalCh:
+			if p != "" {
+				finalPaths = append(finalPaths, p)
+			}
+		default:
+			goto drained
+		}
+	}
+drained:
+	if len(finalPaths) == 0 {
+		select {
+		case p := <-finalCh:
+			if p != "" {
+				finalPaths = append(finalPaths, p)
+			}
+		case <-time.After(2 * time.Second):
+		}
 	}
 
 	m.mu.Lock()
@@ -320,11 +334,10 @@ func (m *Manager) run(t *Task) {
 		m.mu.Unlock()
 		return
 	}
-	if finalPath != "" {
-		cur.Path = filepath.Dir(finalPath)
-		cur.Filename = filepath.Base(finalPath)
+	if len(finalPaths) > 0 {
+		cur.Path = filepath.Dir(finalPaths[0])
+		cur.Filename = filepath.Base(finalPaths[0])
 	} else {
-		// best-effort: trust downloadDir; user can find it manually.
 		cur.Path = downloadDir
 	}
 	cur.Status = StatusDone
@@ -338,14 +351,21 @@ func (m *Manager) run(t *Task) {
 	m.persist()
 	m.emit(snap)
 
-	// Hand off to whoever's listening — typically the transcribe
-	// pipeline. Done synchronously so the UI sees the transcribe
-	// row appear right after the download row turns green.
 	m.mu.Lock()
 	cb := m.completed
 	m.mu.Unlock()
 	if cb != nil {
 		cb(snap)
+		// Podcast batch: each file needs its own task ID so the
+		// transcribe pipeline doesn't overwrite the previous job.
+		for i := 1; i < len(finalPaths); i++ {
+			extra := snap
+			extra.ID = fmt.Sprintf("%s_ep%d", t.ID, i+1)
+			extra.Path = filepath.Dir(finalPaths[i])
+			extra.Filename = filepath.Base(finalPaths[i])
+			extra.Title = strings.TrimSuffix(extra.Filename, filepath.Ext(extra.Filename))
+			cb(extra)
+		}
 	}
 }
 

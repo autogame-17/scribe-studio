@@ -16,6 +16,7 @@ type Format = external.Format
 // round-trip on every keystroke. The set of recognised hosts must stay
 // in sync with backend/scribe/channels_open.go.
 const channelsURLPattern = /^https?:\/\/(channels\.weixin\.qq\.com|finder\.video\.qq\.com)\b/i
+const xiaoyuzhouURLPattern = /^https?:\/\/(www\.)?xiaoyuzhoufm\.com\/(episode|podcast)\//i
 
 /**
  * AddURLDialog — modal for adding a YouTube / B站 / yt-dlp-supported
@@ -54,6 +55,7 @@ export function AddURLDialog({
   // can swap its hint, suppress the probe call, and re-label the
   // primary action without waiting on the backend.
   const isChannels = useMemo(() => channelsURLPattern.test(url.trim()), [url])
+  const isXiaoyuzhou = useMemo(() => xiaoyuzhouURLPattern.test(url.trim()), [url])
 
   // Reset state every time the dialog opens — leaving stale probe
   // results around between adds is a great way to download the wrong
@@ -123,6 +125,7 @@ export function AddURLDialog({
       setProbing(false)
       return
     }
+    // Xiaoyuzhou uses the same ResolveURL entry; backend routes to API probe.
     probeTimer.current = window.setTimeout(() => {
       probeURL(url.trim())
     }, 600)
@@ -131,7 +134,7 @@ export function AddURLDialog({
         window.clearTimeout(probeTimer.current)
       }
     }
-  }, [url, open, probeURL, isChannels])
+  }, [url, open, probeURL, isChannels, isXiaoyuzhou])
 
   async function submit() {
     if (!url.trim()) {
@@ -223,14 +226,14 @@ export function AddURLDialog({
             autoFocus
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://www.youtube.com/... · https://www.bilibili.com/... · https://channels.weixin.qq.com/..."
+            placeholder="YouTube / B站 / 小宇宙 episode 链接 / 视频号 channels.weixin.qq.com ..."
             className={cn(
               'w-full rounded-md border border-border/60 bg-background px-3 py-2 text-sm',
               'focus:border-foreground/30 focus:outline-none focus:ring-2 focus:ring-foreground/10'
             )}
           />
           <p className="mt-1 text-[11px] text-muted-foreground">
-            支持 YouTube · B站 · X / Twitter · 抖音 · TikTok 等 1700+ 站点（由 yt-dlp 提供）；视频号链接将由 MITM 注入流程接管
+            支持 YouTube · B站 · 小宇宙 · X / Twitter · 抖音 · TikTok 等；视频号链接走 MITM 注入（需在浏览器中打开）
           </p>
 
           {/* Channels branch: show a self-contained guidance panel

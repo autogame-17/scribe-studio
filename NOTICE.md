@@ -45,12 +45,27 @@ directive in `backend/core/go.mod`. Upstream license: **GPL-3.0**
 (see `backend/core/pkg/gopeed/LICENSE`). This is the load-bearing
 copyleft dependency that drives the project-wide GPL-3.0 license.
 
+## Xiaoyuzhou (小宇宙) download integration
+
+Scribe's Xiaoyuzhou support lives in `backend/scribe/xiaoyuzhou/` (GPL-3.0-or-later,
+Scribe-original). It calls the public `api.xiaoyuzhoufm.com` HTTP API directly.
+The request shapes and auth flow were informed by these community projects (not
+vendored as source):
+
+| Project | License | Role |
+|---|---|---|
+| [shiquda/xyz-dl](https://github.com/shiquda/xyz-dl) | AGPL-3.0 | Reference for refresh-token auth and episode/podcast download flow |
+| [MosesHe/xiaoyuzhoufm-mcp](https://github.com/MosesHe/xiaoyuzhoufm-mcp) | MIT | Reference for API endpoint layout and response types |
+
+Users may also install `xyz-dl` separately for CLI use; Scribe does not bundle it.
+
 ## Runtime dependencies (binaries the app shells out to)
 
 | Tool | License | Source |
 |---|---|---|
 | `ffmpeg` | LGPL-2.1-or-later | <https://ffmpeg.org/> — LGPL build via Homebrew on macOS |
 | `whisper-cli` (from `whisper.cpp`) | MIT | <https://github.com/ggerganov/whisper.cpp> |
+| `yt-dlp` | Unlicense | <https://github.com/yt-dlp/yt-dlp> — optional URL downloads |
 
 The `v0.2a` release uses Homebrew-installed versions symlinked into
 `resources/bin/`. A future release workflow will bundle pre-built static

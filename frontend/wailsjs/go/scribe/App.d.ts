@@ -42,6 +42,10 @@ export function GetTranscript(arg1:string):Promise<pipeline.SavedTranscript>;
 
 export function GetVersion():Promise<scribe.VersionInfo>;
 
+export function GetXiaoyuzhouAuthStatus():Promise<{configured:boolean;valid:boolean}>;
+
+export function SetXiaoyuzhouCredentials(arg1:string,arg2:string):Promise<void>;
+
 export function InstallCert():Promise<void>;
 
 export function IsChannelsURL(arg1:string):Promise<boolean>;
