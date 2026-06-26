@@ -268,13 +268,19 @@ func (c *APIClient) createFeedTaskBody(oid, nid, reqUrl, eid string, isMp3, isCo
 
 	// 构建文件名
 	feed := r.Data.Object
+	// When the video has no description (common for short clips), fall
+	// back to a human-meaningful name rather than the bare internal ID
+	// (which produces folder names like "14308241424305686850" that are
+	// useless for browsing). Format: "无标题视频-<download_at>".
 	defaultName := feed.ObjectDesc.Description
 	if defaultName == "" {
-		if feed.ID != "" {
-			defaultName = feed.ID
-		} else {
-			defaultName = util.NowSecondsStr()
-		}
+		defaultName = "无标题视频-" + util.NowSecondsStr()
+	}
+	// Author may be missing on edge-case feeds; use a stable placeholder
+	// so the per-author folder structure stays consistent.
+	author := feed.Contact.Nickname
+	if author == "" {
+		author = "未知作者"
 	}
 	template := c.cfg.Original.GetString("download.filenameTemplate")
 	filename := defaultName
@@ -286,7 +292,7 @@ func (c *APIClient) createFeedTaskBody(oid, nid, reqUrl, eid string, isMp3, isCo
 			"spec":        spec,
 			"created_at":  strconv.Itoa(feed.CreateTime),
 			"download_at": util.NowSecondsStr(),
-			"author":      feed.Contact.Nickname,
+			"author":      author,
 		}
 		filename = template
 		for k, v := range params {
