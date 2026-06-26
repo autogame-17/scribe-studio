@@ -9,9 +9,46 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/spf13/viper"
+
 	"github.com/autogame-17/scribe-studio/backend/scribe/logbus"
 	"wx_channel/pkg/sphkit"
 )
+
+// autoStartProxyIfEnabled boots the MITM proxy on app launch so the
+// WeChat Channels injection just works without an extra click. Runs in
+// a goroutine off Startup because cert installation can prompt the user
+// for an admin password (osascript), which blocks for seconds — we
+// don't want that to delay the window appearing.
+//
+// Opt-out by setting `proxy.autoStart: false` in config.yaml. The
+// string check (rather than viper.GetBool) is deliberate: viper's zero
+// value for a missing key is false, but we want the default to be true,
+// so we treat anything that isn't an explicit "false" as enabled.
+func (a *App) autoStartProxyIfEnabled() {
+	a.mu.Lock()
+	if a.kit == nil {
+		k, err := sphkit.New(BuildVersion, BuildMode)
+		if err != nil {
+			a.mu.Unlock()
+			logbus.Error("proxy", "init for auto-start: %v", err)
+			return
+		}
+		a.kit = k
+	}
+	a.mu.Unlock()
+
+	if strings.EqualFold(viper.GetString("proxy.autoStart"), "false") {
+		logbus.Info("proxy", "auto-start disabled by config")
+		return
+	}
+
+	if err := a.ensureProxyRunning(); err != nil {
+		logbus.Error("proxy", "auto-start: %v", err)
+		return
+	}
+	logbus.Info("proxy", "auto-started on launch")
+}
 
 // IsChannelsURL reports whether `raw` looks like a WeChat Channels web URL
 // the embedded MITM + injection pipeline can take over. Used by the React
