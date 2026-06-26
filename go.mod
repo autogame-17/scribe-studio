@@ -3,6 +3,7 @@ module github.com/autogame-17/scribe-studio
 go 1.23.0
 
 require (
+	github.com/spf13/viper v1.17.0
 	github.com/wailsapp/wails/v2 v2.12.0
 	golang.org/x/net v0.38.0
 	wx_channel v0.0.0
@@ -84,7 +85,6 @@ require (
 	github.com/spf13/afero v1.10.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
-	github.com/spf13/viper v1.17.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
