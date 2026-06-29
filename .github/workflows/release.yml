@@ -8,15 +8,15 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Version tag to build (e.g. v0.4.0)"
+        description: "Version tag to build (e.g. v0.4.5)"
         required: true
-        default: "v0.4.0-rc1"
+        default: "v0.4.5"
 
 permissions:
   contents: write
 
 jobs:
-  # macOS matrix: arm64 (Apple Silicon, macos-14) + amd64 (Intel, macos-13).
+  # macOS matrix: arm64 (Apple Silicon, macos-15) + amd64 (Intel, macos-15-intel).
   # Each job ships its own native DMG; the arm64 build avoids the future macOS
   # "Intel chip App" deprecation warning on Apple Silicon.
   macos:
@@ -24,9 +24,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-14
+          - runner: macos-15
             arch: arm64
-          - runner: macos-13
+          - runner: macos-15-intel
             arch: amd64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
