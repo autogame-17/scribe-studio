@@ -134,8 +134,8 @@ export function DashboardPage() {
 
   async function installCert() {
     setCertBusy(true)
-    toast.message('系统会弹窗要求管理员密码授权', {
-      description: '本地 CA 必须加入系统钥匙串才能拦截 HTTPS。',
+    toast.message('macOS 可能会弹出钥匙串授权', {
+      description: '本地 CA 必须加入信任才能拦截 HTTPS。',
     })
     try {
       await InstallCert()
@@ -151,7 +151,7 @@ export function DashboardPage() {
 
   async function uninstallCert() {
     setCertBusy(true)
-    toast.message('系统会弹窗要求管理员密码授权')
+    toast.message('macOS 可能会弹出钥匙串授权')
     try {
       await UninstallCert()
       toast.success('证书已卸载')
@@ -303,8 +303,8 @@ export function DashboardPage() {
                 {certTrusted
                   ? `CA 证书（CN=${cert?.name ?? 'SunnyNet'}）已加入系统信任。`
                   : certInstalled
-                    ? `CA 证书（CN=${cert?.name ?? 'SunnyNet'}）已在钥匙串中，但还没有通过系统信任验证。点击下方按钮重新加入信任；macOS 会弹窗要求管理员授权。`
-                    : `视频号下载依赖本地 MITM，需要把 CA 证书（CN=${cert?.name ?? 'SunnyNet'}）加入系统信任。点击下方按钮一键安装；macOS 会弹窗要求管理员授权。`}
+                    ? `CA 证书（CN=${cert?.name ?? 'SunnyNet'}）已在钥匙串中，但还没有通过系统信任验证。点击下方按钮重新加入信任；macOS 可能会弹出钥匙串授权。`
+                    : `视频号下载依赖本地 MITM，需要把 CA 证书（CN=${cert?.name ?? 'SunnyNet'}）加入信任。点击下方按钮一键安装；macOS 可能会弹出钥匙串授权。`}
               </p>
             </div>
             {certTrusted ? (

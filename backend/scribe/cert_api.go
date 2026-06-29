@@ -43,12 +43,11 @@ func (a *App) GetCertStatus() CertStatus {
 	return CertStatus{Installed: status.Installed, Trusted: status.Trusted, Name: name}
 }
 
-// InstallCert writes the bundled SunnyNet CA into the system trust store.
-// On macOS this triggers a SecurityAgent prompt for an admin password —
-// `security add-trusted-cert -k /Library/Keychains/System.keychain` requires
-// it. The frontend should toast that hint *before* calling this so the user
-// doesn't get blindsided by the OS dialog.
+// InstallCert writes the active CA into the local trust store. On macOS this is
+// user-level trust, which is enough for the current user's WeChat process and
+// avoids nested admin authorization failures in SecTrustSettings.
 func (a *App) InstallCert() error {
+	name := certDisplayName(a)
 	bytes, err := certBytes(a)
 	if err != nil {
 		return err
@@ -57,7 +56,7 @@ func (a *App) InstallCert() error {
 		logbus.Error("cert", "install: %v", err)
 		return err
 	}
-	logbus.Info("cert", "installed %s", certName)
+	logbus.Info("cert", "installed %s", name)
 	return nil
 }
 
@@ -67,20 +66,21 @@ func (a *App) requireTrustedCert() error {
 		return nil
 	}
 	if status.Installed {
-		return fmt.Errorf("CA 证书 %s 已在钥匙串中，但尚未加入系统信任。请先点击「安装证书」并完成 macOS 管理员授权", status.Name)
+		return fmt.Errorf("CA 证书 %s 已在钥匙串中，但尚未通过系统信任验证。请先点击「安装证书」并完成 macOS 钥匙串授权", status.Name)
 	}
-	return fmt.Errorf("CA 证书 %s 尚未安装。请先点击「安装证书」并完成 macOS 管理员授权", status.Name)
+	return fmt.Errorf("CA 证书 %s 尚未安装。请先点击「安装证书」并完成 macOS 钥匙串授权", status.Name)
 }
 
 // UninstallCert removes the SunnyNet CA from the system trust store. Same
 // admin-prompt caveat as Install. Useful for clean uninstall + when the
 // cert gets re-issued upstream and the old one needs purging first.
 func (a *App) UninstallCert() error {
-	if err := certificate.UninstallCertificate(certName); err != nil {
+	name := certDisplayName(a)
+	if err := certificate.UninstallCertificate(name); err != nil {
 		logbus.Error("cert", "uninstall: %v", err)
 		return err
 	}
-	logbus.Info("cert", "uninstalled %s", certName)
+	logbus.Info("cert", "uninstalled %s", name)
 	return nil
 }
 

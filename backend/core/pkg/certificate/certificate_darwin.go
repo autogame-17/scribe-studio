@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -95,14 +94,12 @@ func installCertificate(cert_data []byte) error {
 	if err := cert_file.Close(); err != nil {
 		return errors.New(fmt.Sprintf("生成证书失败，%v\n", err.Error()))
 	}
-	// Writing to /Library/Keychains/System.keychain requires root. Wrap the
-	// command with osascript "with administrator privileges" so macOS prompts
-	// the user for their password via the native authorization dialog —
-	// otherwise the bare `security` invocation fails with a write-permission
-	// error.
-	inner := fmt.Sprintf("security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain %s", strconv.Quote(cert_file.Name()))
-	script := fmt.Sprintf("do shell script %s with administrator privileges", strconv.Quote(inner))
-	ps := exec.Command("osascript", "-e", script)
+	// Trust for the current user is enough for WeChat PC, which also runs as
+	// the current user. Avoid the System keychain path here: wrapping
+	// `security add-trusted-cert -d` in osascript can still fail inside
+	// SecTrustSettingsSetTrustSettings with "no user interaction was possible"
+	// even after the admin password dialog is accepted.
+	ps := exec.Command("security", "add-trusted-cert", "-r", "trustRoot", "-k", loginKeychainPath(), cert_file.Name())
 	output, err2 := ps.CombinedOutput()
 	if err2 != nil {
 		return errors.New(fmt.Sprintf("安装证书时发生错误，%v\n", string(output)))
@@ -168,6 +165,20 @@ func loginKeychainPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
+	}
+	for _, path := range []string{
+		home + "/Library/Keychains/login.keychain-db",
+		home + "/Library/Keychains/login.keychain",
+	} {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	output, err := exec.Command("security", "default-keychain").Output()
+	if err == nil {
+		if keychain := strings.Trim(strings.TrimSpace(string(output)), `"`); keychain != "" {
+			return keychain
+		}
 	}
 	return home + "/Library/Keychains/login.keychain-db"
 }
