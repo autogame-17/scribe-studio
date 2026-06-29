@@ -6,36 +6,42 @@ import (
 	"wx_channel/pkg/sphkit"
 )
 
-// ProxyStatus is the shape returned to the React frontend. It maps 1:1 to
-// sphkit.Status but is redeclared here so the Wails TypeScript generator
-// places it in the sph package (the frontend imports it as sph.ProxyStatus).
+// ProxyStatus is the shape returned to the React frontend. It includes sphkit's
+// process state plus a system-proxy health check so "proxy process is running"
+// and "WeChat traffic is actually routed through it" are visible separately.
 type ProxyStatus struct {
 	Running         bool   `json:"running"`
 	InterceptorAddr string `json:"interceptorAddr"`
 	APIAddr         string `json:"apiAddr"`
 	LastError       string `json:"lastError,omitempty"`
+
+	SystemProxyManaged      bool   `json:"systemProxyManaged"`
+	SystemProxyEnabled      bool   `json:"systemProxyEnabled"`
+	SystemProxyMatched      bool   `json:"systemProxyMatched"`
+	SystemProxyAddr         string `json:"systemProxyAddr,omitempty"`
+	SystemProxyDevice       string `json:"systemProxyDevice,omitempty"`
+	SystemProxyExpectedAddr string `json:"systemProxyExpectedAddr,omitempty"`
+	SystemProxyError        string `json:"systemProxyError,omitempty"`
 }
 
 // StartProxy boots the embedded MITM + API server pair. The kit instance
 // is lazily created on first Start so the app window opens instantly and we
 // only pay the config-loading cost when the user actually asks to start.
 func (a *App) StartProxy() error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	if a.kit == nil {
-		kit, err := sphkit.New(BuildVersion, BuildMode)
-		if err != nil {
-			logbus.Error("proxy", "init: %v", err)
-			return err
-		}
-		a.kit = kit
+	kit, err := a.ensureKit()
+	if err != nil {
+		logbus.Error("proxy", "init: %v", err)
+		return err
 	}
-	if err := a.kit.Start(); err != nil {
+	if err := a.requireTrustedCert(); err != nil {
+		logbus.Error("proxy", "cert: %v", err)
+		return err
+	}
+	if err := kit.Start(); err != nil {
 		logbus.Error("proxy", "start: %v", err)
 		return err
 	}
-	s := a.kit.Status()
+	s := kit.Status()
 	logbus.Info("proxy", "started — interceptor %s, api %s", s.InterceptorAddr, s.APIAddr)
 	return nil
 }
@@ -60,38 +66,77 @@ func (a *App) StopProxy() error {
 // runtime.EventsEmit("proxy:status", …) when state changes.
 func (a *App) GetProxyStatus() ProxyStatus {
 	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	if a.kit == nil {
-		return ProxyStatus{}
-	}
-	s := a.kit.Status()
-	return ProxyStatus(s)
-}
-
-// SetProxyAddr updates the persisted host + port for the API (and by
-// extension the interceptor at port-1). We construct the kit lazily if
-// the user is configuring before ever starting the proxy. Returns nil
-// even when the proxy is currently running — the new values won't take
-// effect until the next Start, and the UI is responsible for surfacing
-// that ("点保存后重启代理生效").
-func (a *App) SetProxyAddr(host string, port int) error {
-	a.mu.Lock()
-	if a.kit == nil {
-		k, err := sphkit.New(BuildVersion, BuildMode)
-		if err != nil {
-			a.mu.Unlock()
-			logbus.Error("proxy", "init kit for set: %v", err)
-			return err
-		}
-		a.kit = k
-	}
 	kit := a.kit
 	a.mu.Unlock()
+	if kit == nil {
+		return ProxyStatus{}
+	}
+	s := kit.Status()
+	status := ProxyStatus{
+		Running:         s.Running,
+		InterceptorAddr: s.InterceptorAddr,
+		APIAddr:         s.APIAddr,
+		LastError:       s.LastError,
+	}
+	if !status.Running {
+		cfg := kit.GetConfig()
+		status.InterceptorAddr = cfg.InterceptorAddr
+		status.APIAddr = cfg.APIAddr
+	}
+	sys := kit.SystemProxyStatus()
+	status.SystemProxyManaged = sys.Managed
+	status.SystemProxyEnabled = sys.Enabled
+	status.SystemProxyMatched = sys.Matched
+	status.SystemProxyAddr = sys.Addr
+	status.SystemProxyDevice = sys.Device
+	status.SystemProxyExpectedAddr = sys.ExpectedAddr
+	status.SystemProxyError = sys.Error
+	return status
+}
+
+// SetProxyAddr updates the persisted host + port for the API. The interceptor
+// has its own proxy.hostname/proxy.port settings; this method keeps the
+// historical API editor behavior and reports the real interceptor address via
+// GetConfig/GetProxyStatus.
+func (a *App) SetProxyAddr(host string, port int) error {
+	kit, err := a.ensureKit()
+	if err != nil {
+		logbus.Error("proxy", "init kit for set: %v", err)
+		return err
+	}
 	if err := kit.SetProxyAddr(host, port); err != nil {
 		logbus.Error("proxy", "set addr: %v", err)
 		return err
 	}
 	logbus.Info("proxy", "addr set to %s:%d (restart required)", host, port)
 	return nil
+}
+
+func (a *App) ApplySystemProxy() error {
+	kit, err := a.ensureKit()
+	if err != nil {
+		logbus.Error("proxy", "init kit for system proxy: %v", err)
+		return err
+	}
+	if err := kit.ApplySystemProxy(); err != nil {
+		logbus.Error("proxy", "apply system proxy: %v", err)
+		return err
+	}
+	sys := kit.SystemProxyStatus()
+	logbus.Info("proxy", "system proxy set to %s on %s", sys.ExpectedAddr, sys.Device)
+	return nil
+}
+
+func (a *App) ensureKit() (*sphkit.Instance, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.kit != nil {
+		return a.kit, nil
+	}
+	kit, err := sphkit.New(BuildVersion, BuildMode)
+	if err != nil {
+		return nil, err
+	}
+	a.kit = kit
+	return kit, nil
 }

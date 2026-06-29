@@ -12,38 +12,25 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/autogame-17/scribe-studio/backend/scribe/logbus"
-	"wx_channel/pkg/sphkit"
 )
 
 // autoStartProxyIfEnabled boots the MITM proxy on app launch so the
 // WeChat Channels injection just works without an extra click. Runs in
-// a goroutine off Startup because cert installation can prompt the user
-// for an admin password (osascript), which blocks for seconds — we
-// don't want that to delay the window appearing.
+// a goroutine off Startup so connection setup never delays window paint.
+// It will not install or trust certificates; macOS authorization prompts
+// must remain behind the explicit Install Certificate button.
 //
 // Opt-out by setting `proxy.autoStart: false` in config.yaml. The
 // string check (rather than viper.GetBool) is deliberate: viper's zero
 // value for a missing key is false, but we want the default to be true,
 // so we treat anything that isn't an explicit "false" as enabled.
 func (a *App) autoStartProxyIfEnabled() {
-	a.mu.Lock()
-	if a.kit == nil {
-		k, err := sphkit.New(BuildVersion, BuildMode)
-		if err != nil {
-			a.mu.Unlock()
-			logbus.Error("proxy", "init for auto-start: %v", err)
-			return
-		}
-		a.kit = k
-	}
-	a.mu.Unlock()
-
 	if strings.EqualFold(viper.GetString("proxy.autoStart"), "false") {
 		logbus.Info("proxy", "auto-start disabled by config")
 		return
 	}
 
-	if err := a.ensureProxyRunning(); err != nil {
+	if err := a.StartProxy(); err != nil {
 		logbus.Error("proxy", "auto-start: %v", err)
 		return
 	}
@@ -101,22 +88,14 @@ func (a *App) OpenChannelsURL(raw string) error {
 // return so the call is cheap to invoke from the dialog without a
 // pre-flight Status() round-trip.
 func (a *App) ensureProxyRunning() error {
-	a.mu.Lock()
-	if a.kit == nil {
-		k, err := sphkit.New(BuildVersion, BuildMode)
-		if err != nil {
-			a.mu.Unlock()
-			return err
-		}
-		a.kit = k
+	kit, err := a.ensureKit()
+	if err != nil {
+		return err
 	}
-	kit := a.kit
-	a.mu.Unlock()
-
 	if s := kit.Status(); s.Running {
 		return nil
 	}
-	return kit.Start()
+	return a.StartProxy()
 }
 
 // isChannelsURL parses without mutating; safe to call on user input. We

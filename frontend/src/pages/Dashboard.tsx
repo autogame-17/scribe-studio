@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { useCallback, useEffect, useState } from 'react'
-import { Play, Square, ShieldCheck, ShieldAlert, FolderOpen, Copy, Loader2 } from 'lucide-react'
+import {
+  Play,
+  Square,
+  ShieldCheck,
+  ShieldAlert,
+  FolderOpen,
+  Copy,
+  Loader2,
+  Route,
+} from 'lucide-react'
 import {
   Card,
   CardContent,
@@ -22,6 +31,7 @@ import {
   GetCertStatus,
   InstallCert,
   UninstallCert,
+  ApplySystemProxy,
 } from '../../wailsjs/go/scribe/App'
 import type { scribe, sphkit } from '../../wailsjs/go/models'
 import { Link } from 'react-router-dom'
@@ -40,6 +50,7 @@ export function DashboardPage() {
   const [noModel, setNoModel] = useState(false)
   const [cert, setCert] = useState<CertStatus | null>(null)
   const [certBusy, setCertBusy] = useState(false)
+  const [proxyFixBusy, setProxyFixBusy] = useState(false)
 
   const refreshCert = useCallback(async () => {
     try {
@@ -99,7 +110,27 @@ export function DashboardPage() {
     toast.success('代理地址已复制')
   }
 
+  async function applySystemProxy() {
+    setProxyFixBusy(true)
+    try {
+      await ApplySystemProxy()
+      const s = await GetProxyStatus()
+      setStatus(s)
+      toast.success('系统代理已指向 Scribe')
+    } catch (e) {
+      toast.error(String(e).replace(/^Error: /, ''))
+    } finally {
+      setProxyFixBusy(false)
+    }
+  }
+
   const certInstalled = !!cert?.installed
+  const certTrusted = !!cert?.trusted
+  const systemProxyMismatch =
+    !!status?.running &&
+    !!status?.systemProxyManaged &&
+    !status?.systemProxyMatched &&
+    !status?.systemProxyError
 
   async function installCert() {
     setCertBusy(true)
@@ -108,7 +139,7 @@ export function DashboardPage() {
     })
     try {
       await InstallCert()
-      toast.success('证书已安装')
+      toast.success('证书已加入系统信任')
       await refreshCert()
     } catch (e) {
       const msg = String(e).replace(/^Error: /, '')
@@ -202,6 +233,48 @@ export function DashboardPage() {
                 {status.lastError}
               </div>
             )}
+            {systemProxyMismatch && (
+              <div className="rounded-md border border-amber-500/35 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <p className="leading-relaxed">
+                      系统代理当前是{' '}
+                      <span className="font-mono">
+                        {status.systemProxyAddr || '未启用'}
+                      </span>
+                      ，不是 Scribe 的{' '}
+                      <span className="font-mono">
+                        {status.systemProxyExpectedAddr || status.interceptorAddr}
+                      </span>
+                      。微信视频号流量没有进入 Scribe，所以不会出现下载按钮。
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={applySystemProxy}
+                      disabled={proxyFixBusy}
+                      className="bg-background/70"
+                    >
+                      {proxyFixBusy ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> 设置中
+                        </>
+                      ) : (
+                        <>
+                          <Route className="h-3.5 w-3.5" /> 设为系统代理
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {status?.systemProxyError && (
+              <div className="rounded-md border border-amber-500/35 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+                系统代理状态读取失败：{status.systemProxyError}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -211,24 +284,30 @@ export function DashboardPage() {
               <CardTitle>证书</CardTitle>
               <CardDescription>HTTPS 拦截所需的本地 CA</CardDescription>
             </div>
-            {certInstalled ? (
-              <Badge variant="success">已安装</Badge>
+            {certTrusted ? (
+              <Badge variant="success">已信任</Badge>
+            ) : certInstalled ? (
+              <Badge variant="warning">未信任</Badge>
             ) : (
-              <Badge variant="outline">未检测</Badge>
+              <Badge variant="outline">未安装</Badge>
             )}
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div className="flex items-start gap-3 text-muted-foreground">
-              {certInstalled ? (
+              {certTrusted ? (
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
               ) : (
                 <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
               )}
               <p className="leading-relaxed">
-                视频号下载依赖本地 MITM，需要把 CA 证书（CN={cert?.name ?? 'SunnyNet'}）加入系统信任。点击下方按钮一键安装；macOS 会弹窗要求管理员授权。
+                {certTrusted
+                  ? `CA 证书（CN=${cert?.name ?? 'SunnyNet'}）已加入系统信任。`
+                  : certInstalled
+                    ? `CA 证书（CN=${cert?.name ?? 'SunnyNet'}）已在钥匙串中，但还没有通过系统信任验证。点击下方按钮重新加入信任；macOS 会弹窗要求管理员授权。`
+                    : `视频号下载依赖本地 MITM，需要把 CA 证书（CN=${cert?.name ?? 'SunnyNet'}）加入系统信任。点击下方按钮一键安装；macOS 会弹窗要求管理员授权。`}
               </p>
             </div>
-            {certInstalled ? (
+            {certTrusted ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -256,7 +335,7 @@ export function DashboardPage() {
                     <Loader2 className="h-3.5 w-3.5 animate-spin" /> 安装中
                   </>
                 ) : (
-                  '安装证书'
+                  '安装/信任证书'
                 )}
               </Button>
             )}

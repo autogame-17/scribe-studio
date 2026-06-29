@@ -90,6 +90,14 @@ func fetchCertificates() ([]Certificate, error) {
 	return certs, nil
 }
 
+func checkCertificateStatus(name string) (CertificateStatus, error) {
+	installed, err := CheckHasCertificate(name)
+	if err != nil {
+		return CertificateStatus{}, err
+	}
+	return CertificateStatus{Installed: installed, Trusted: installed}, nil
+}
+
 func installCertificate(cert []byte) error {
 	// 检查 root 权限
 	if !ensureRoot("install") {

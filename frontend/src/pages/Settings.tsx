@@ -85,10 +85,9 @@ export function SettingsPage() {
 
 type ProxyConfig = sphkit.Config
 
-// ProxyTab edits api.hostname / api.port. The interceptor address is
-// derived (port - 1) by sphkit so we show it but don't let the user edit
-// it directly — keeps the two ports a known offset apart and matches the
-// upstream wx_channel CLI behaviour.
+// ProxyTab edits api.hostname / api.port. The interceptor address is read from
+// the core proxy config and shown as read-only because it must match the system
+// proxy destination used by the WeChat injection.
 function ProxyTab() {
   const [cfg, setCfg] = useState<ProxyConfig | null>(null)
   const [host, setHost] = useState('')
@@ -154,7 +153,7 @@ function ProxyTab() {
       <CardHeader>
         <CardTitle>代理</CardTitle>
         <CardDescription>
-          API 服务监听地址。拦截端口自动取 API 端口 - 1，启动时由 sphkit 派生。改完需要重启代理（概览页「停止 → 启动」）才生效。
+          API 服务监听地址。拦截端口使用核心代理配置，概览页会检查系统代理是否真正指向它。改完需要重启代理（概览页「停止 → 启动」）才生效。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

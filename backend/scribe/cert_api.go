@@ -23,6 +23,7 @@ const certName = "SunnyNet"
 // Keychain Access (helps debug when Installed reports stale state).
 type CertStatus struct {
 	Installed bool   `json:"installed"`
+	Trusted   bool   `json:"trusted"`
 	Name      string `json:"name"`
 }
 
@@ -33,12 +34,13 @@ type CertStatus struct {
 // same as "not installed" from a UX perspective and we don't want to red-
 // banner the dashboard over a transient `security` hiccup.
 func (a *App) GetCertStatus() CertStatus {
-	ok, err := certificate.CheckHasCertificate(certName)
+	name := certDisplayName(a)
+	status, err := certificate.CheckCertificateStatus(name)
 	if err != nil {
 		logbus.Warn("cert", "check: %v", err)
-		return CertStatus{Installed: false, Name: certName}
+		return CertStatus{Name: name}
 	}
-	return CertStatus{Installed: ok, Name: certName}
+	return CertStatus{Installed: status.Installed, Trusted: status.Trusted, Name: name}
 }
 
 // InstallCert writes the bundled SunnyNet CA into the system trust store.
@@ -57,6 +59,17 @@ func (a *App) InstallCert() error {
 	}
 	logbus.Info("cert", "installed %s", certName)
 	return nil
+}
+
+func (a *App) requireTrustedCert() error {
+	status := a.GetCertStatus()
+	if status.Trusted {
+		return nil
+	}
+	if status.Installed {
+		return fmt.Errorf("CA 证书 %s 已在钥匙串中，但尚未加入系统信任。请先点击「安装证书」并完成 macOS 管理员授权", status.Name)
+	}
+	return fmt.Errorf("CA 证书 %s 尚未安装。请先点击「安装证书」并完成 macOS 管理员授权", status.Name)
 }
 
 // UninstallCert removes the SunnyNet CA from the system trust store. Same
@@ -97,4 +110,16 @@ func certBytes(a *App) ([]byte, error) {
 		return nil, errors.New("bundled CA payload is empty (build without certs?)")
 	}
 	return files.Cert, nil
+}
+
+func certDisplayName(a *App) string {
+	a.mu.Lock()
+	kit := a.kit
+	a.mu.Unlock()
+	if kit != nil {
+		if files := kit.CertFiles(); files != nil && files.Name != "" {
+			return files.Name
+		}
+	}
+	return certName
 }

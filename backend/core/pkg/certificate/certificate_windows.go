@@ -65,6 +65,14 @@ func fetchCertificates() ([]Certificate, error) {
 	return certificates, nil
 }
 
+func checkCertificateStatus(name string) (CertificateStatus, error) {
+	installed, err := CheckHasCertificate(name)
+	if err != nil {
+		return CertificateStatus{}, err
+	}
+	return CertificateStatus{Installed: installed, Trusted: installed}, nil
+}
+
 func installCertificate(cert_data []byte) error {
 	cert_file, err := os.CreateTemp("", "SunnyRoot.cer")
 	if err != nil {

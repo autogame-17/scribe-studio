@@ -41,6 +41,11 @@ type Certificate struct {
 	Subject    CertificateSubject
 }
 
+type CertificateStatus struct {
+	Installed bool
+	Trusted   bool
+}
+
 // 获取所有证书
 func FetchCertificates() ([]Certificate, error) {
 	return fetchCertificates()
@@ -58,6 +63,10 @@ func CheckHasCertificate(cert_name string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func CheckCertificateStatus(cert_name string) (CertificateStatus, error) {
+	return checkCertificateStatus(cert_name)
 }
 
 // 安装指定证书

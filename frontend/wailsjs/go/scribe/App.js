@@ -14,6 +14,10 @@ export function AddExternalURL(arg1) {
   return window['go']['scribe']['App']['AddExternalURL'](arg1);
 }
 
+export function ApplySystemProxy() {
+  return window['go']['scribe']['App']['ApplySystemProxy']();
+}
+
 export function CancelExternal(arg1) {
   return window['go']['scribe']['App']['CancelExternal'](arg1);
 }
@@ -74,10 +78,6 @@ export function GetXiaoyuzhouAuthStatus() {
   return window['go']['scribe']['App']['GetXiaoyuzhouAuthStatus']();
 }
 
-export function SetXiaoyuzhouCredentials(arg1, arg2) {
-  return window['go']['scribe']['App']['SetXiaoyuzhouCredentials'](arg1, arg2);
-}
-
 export function InstallCert() {
   return window['go']['scribe']['App']['InstallCert']();
 }
@@ -110,12 +110,12 @@ export function ListTranscripts() {
   return window['go']['scribe']['App']['ListTranscripts']();
 }
 
-export function OpenInFinder(arg1) {
-  return window['go']['scribe']['App']['OpenInFinder'](arg1);
-}
-
 export function OpenChannelsURL(arg1) {
   return window['go']['scribe']['App']['OpenChannelsURL'](arg1);
+}
+
+export function OpenInFinder(arg1) {
+  return window['go']['scribe']['App']['OpenInFinder'](arg1);
 }
 
 export function PickDownloadDir() {
@@ -164,6 +164,10 @@ export function SetDownloadDir(arg1) {
 
 export function SetProxyAddr(arg1, arg2) {
   return window['go']['scribe']['App']['SetProxyAddr'](arg1, arg2);
+}
+
+export function SetXiaoyuzhouCredentials(arg1, arg2) {
+  return window['go']['scribe']['App']['SetXiaoyuzhouCredentials'](arg1, arg2);
 }
 
 export function StartProxy() {

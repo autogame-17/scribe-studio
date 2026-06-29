@@ -11,12 +11,16 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
 	"go.etcd.io/bbolt"
 
 	"wx_channel/internal/api"
+	"wx_channel/internal/interceptor"
+	"wx_channel/pkg/system"
 )
 
 // TaskSummary is a flat, UI-friendly projection of wx_channel's internal task
@@ -52,18 +56,75 @@ type Config struct {
 	MaxRunning      int    `json:"maxRunning"`
 }
 
+type SystemProxyStatus struct {
+	Managed      bool   `json:"managed"`
+	Enabled      bool   `json:"enabled"`
+	Matched      bool   `json:"matched"`
+	Addr         string `json:"addr,omitempty"`
+	Device       string `json:"device,omitempty"`
+	ExpectedAddr string `json:"expectedAddr,omitempty"`
+	Error        string `json:"error,omitempty"`
+}
+
 // GetConfig returns a snapshot of the effective config. Safe to call before
 // Start — values come from the loaded config.Config, not from live servers.
 func (i *Instance) GetConfig() Config {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	apiCfg := api.NewAPIConfig(i.cfg, false)
+	interceptorCfg := interceptor.NewInterceptorSettings(i.cfg)
 	return Config{
 		DownloadDir:     apiCfg.DownloadDir,
-		InterceptorAddr: fmt.Sprintf("%s:%d", apiCfg.Hostname, apiCfg.Port-1),
+		InterceptorAddr: fmt.Sprintf("%s:%d", interceptorCfg.ProxyServerHostname, interceptorCfg.ProxyServerPort),
 		APIAddr:         fmt.Sprintf("%s:%d", apiCfg.Hostname, apiCfg.Port),
 		MaxRunning:      apiCfg.MaxRunning,
 	}
+}
+
+func (i *Instance) SystemProxyStatus() SystemProxyStatus {
+	i.mu.Lock()
+	cfg := i.cfg
+	i.mu.Unlock()
+
+	interceptorCfg := interceptor.NewInterceptorSettings(cfg)
+	expected := system.ProxySettings{
+		Device:   interceptorCfg.ProxyDevice,
+		Hostname: interceptorCfg.ProxyServerHostname,
+		Port:     strconv.Itoa(interceptorCfg.ProxyServerPort),
+	}
+	out := SystemProxyStatus{
+		Managed:      interceptorCfg.ProxySetSystem,
+		ExpectedAddr: formatProxyAddr(expected.Hostname, expected.Port),
+	}
+	cur, err := system.FetchCurProxy(system.ProxySettings{Device: expected.Device})
+	if err != nil {
+		out.Error = err.Error()
+		return out
+	}
+	if cur == nil {
+		return out
+	}
+	out.Enabled = true
+	out.Device = cur.Device
+	out.Addr = formatProxyAddr(cur.Hostname, cur.Port)
+	out.Matched = proxySettingsMatch(expected, *cur)
+	return out
+}
+
+func (i *Instance) ApplySystemProxy() error {
+	i.mu.Lock()
+	cfg := i.cfg
+	i.mu.Unlock()
+
+	interceptorCfg := interceptor.NewInterceptorSettings(cfg)
+	if !interceptorCfg.ProxySetSystem {
+		return errors.New("proxy.system 已关闭，当前配置不会接管系统代理")
+	}
+	return system.EnableProxy(system.ProxySettings{
+		Device:   interceptorCfg.ProxyDevice,
+		Hostname: interceptorCfg.ProxyServerHostname,
+		Port:     strconv.Itoa(interceptorCfg.ProxyServerPort),
+	})
 }
 
 // SetProxyAddr updates the API host + port keys in viper and persists to
@@ -84,6 +145,29 @@ func (i *Instance) SetProxyAddr(host string, port int) error {
 	viper.Set("api.hostname", host)
 	viper.Set("api.port", port)
 	return saveViperToCfg(i.cfg.FullPath)
+}
+
+func formatProxyAddr(host, port string) string {
+	if host == "" || port == "" {
+		return ""
+	}
+	return host + ":" + port
+}
+
+func proxySettingsMatch(expected, current system.ProxySettings) bool {
+	if expected.Port != current.Port {
+		return false
+	}
+	return normalizeProxyHost(expected.Hostname) == normalizeProxyHost(current.Hostname)
+}
+
+func normalizeProxyHost(host string) string {
+	switch strings.ToLower(strings.TrimSpace(host)) {
+	case "localhost", "::1", "[::1]":
+		return "127.0.0.1"
+	default:
+		return strings.ToLower(strings.TrimSpace(host))
+	}
 }
 
 // SetDownloadDir updates download.dir and persists. The path is created

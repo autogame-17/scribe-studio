@@ -5,6 +5,7 @@ import {proofread} from '../models';
 import {external} from '../models';
 import {scribe} from '../models';
 import {sphkit} from '../models';
+import {xiaoyuzhou} from '../models';
 import {logbus} from '../models';
 import {transcribe} from '../models';
 
@@ -13,6 +14,8 @@ export function AcceptFix(arg1:string,arg2:string,arg3:boolean):Promise<pipeline
 export function AcceptNewTerm(arg1:string,arg2:string):Promise<proofread.Entry>;
 
 export function AddExternalURL(arg1:external.AddRequest):Promise<external.Task>;
+
+export function ApplySystemProxy():Promise<void>;
 
 export function CancelExternal(arg1:string):Promise<void>;
 
@@ -42,9 +45,7 @@ export function GetTranscript(arg1:string):Promise<pipeline.SavedTranscript>;
 
 export function GetVersion():Promise<scribe.VersionInfo>;
 
-export function GetXiaoyuzhouAuthStatus():Promise<{configured:boolean;valid:boolean}>;
-
-export function SetXiaoyuzhouCredentials(arg1:string,arg2:string):Promise<void>;
+export function GetXiaoyuzhouAuthStatus():Promise<xiaoyuzhou.AuthStatus>;
 
 export function InstallCert():Promise<void>;
 
@@ -62,9 +63,9 @@ export function ListTasks(arg1:string,arg2:number,arg3:number):Promise<sphkit.Ta
 
 export function ListTranscripts():Promise<Array<pipeline.Job>>;
 
-export function OpenInFinder(arg1:string):Promise<void>;
-
 export function OpenChannelsURL(arg1:string):Promise<void>;
+
+export function OpenInFinder(arg1:string):Promise<void>;
 
 export function PickDownloadDir():Promise<string>;
 
@@ -89,6 +90,8 @@ export function SetAutoTranscribe(arg1:boolean):Promise<void>;
 export function SetDownloadDir(arg1:string):Promise<void>;
 
 export function SetProxyAddr(arg1:string,arg2:number):Promise<void>;
+
+export function SetXiaoyuzhouCredentials(arg1:string,arg2:string):Promise<void>;
 
 export function StartProxy():Promise<void>;
 

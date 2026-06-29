@@ -64,6 +64,25 @@ func fetchCertificates() ([]Certificate, error) {
 	return certificates, nil
 }
 
+func checkCertificateStatus(certificateName string) (CertificateStatus, error) {
+	status := CertificateStatus{}
+	if certificateName == "" {
+		return status, nil
+	}
+
+	if hasCertificateInKeychain(certificateName, systemKeychainPath()) {
+		status.Installed = true
+	}
+	if hasCertificateInKeychain(certificateName, loginKeychainPath()) {
+		status.Installed = true
+	}
+	if hasTrustedCertificate(certificateName) {
+		status.Installed = true
+		status.Trusted = true
+	}
+	return status, nil
+}
+
 func installCertificate(cert_data []byte) error {
 	cert_file, err := os.CreateTemp("", "SunnyRoot.cer")
 	if err != nil {
@@ -113,4 +132,46 @@ func uninstallCertificate(certificate_name string) error {
 		return errors.New(fmt.Sprintf("删除证书时发生错误，%v\n", string(output)))
 	}
 	return nil
+}
+
+func hasCertificateInKeychain(certificateName, keychain string) bool {
+	if keychain == "" {
+		return false
+	}
+	cmd := exec.Command("security", "find-certificate", "-c", certificateName, "-a", keychain)
+	return cmd.Run() == nil
+}
+
+func hasTrustedCertificate(certificateName string) bool {
+	certFile, err := os.CreateTemp("", "ScribeTrustProbe-*.cer")
+	if err != nil {
+		return false
+	}
+	certPath := certFile.Name()
+	_ = certFile.Close()
+	defer os.Remove(certPath)
+
+	output, err := exec.Command("security", "find-certificate", "-c", certificateName, "-p", systemKeychainPath()).CombinedOutput()
+	if err != nil || len(output) == 0 {
+		output, err = exec.Command("security", "find-certificate", "-c", certificateName, "-p", loginKeychainPath()).CombinedOutput()
+	}
+	if err != nil || len(output) == 0 {
+		return false
+	}
+	if err := os.WriteFile(certPath, output, 0o600); err != nil {
+		return false
+	}
+	return exec.Command("security", "verify-cert", "-c", certPath, "-l", "-L").Run() == nil
+}
+
+func loginKeychainPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return home + "/Library/Keychains/login.keychain-db"
+}
+
+func systemKeychainPath() string {
+	return "/Library/Keychains/System.keychain"
 }

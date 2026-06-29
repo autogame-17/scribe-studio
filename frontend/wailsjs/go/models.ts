@@ -1,5 +1,5 @@
 export namespace external {
-	
+
 	export class AddRequest {
 	    url: string;
 	    format?: string;
@@ -9,11 +9,11 @@ export namespace external {
 	    title?: string;
 	    site?: string;
 	    duration?: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AddRequest(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.url = source["url"];
@@ -32,11 +32,11 @@ export namespace external {
 	    height: number;
 	    fileSize: number;
 	    ext: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Format(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -55,11 +55,11 @@ export namespace external {
 	    uploader?: string;
 	    formats: Format[];
 	    subLangs?: string[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ProbeResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.url = source["url"];
@@ -71,7 +71,7 @@ export namespace external {
 	        this.formats = this.convertValues(source["formats"], Format);
 	        this.subLangs = source["subLangs"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -113,11 +113,11 @@ export namespace external {
 	    error?: string;
 	    createdAt: string;
 	    updatedAt: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -148,17 +148,17 @@ export namespace external {
 }
 
 export namespace logbus {
-	
+
 	export class Entry {
 	    timestamp: string;
 	    level: string;
 	    source: string;
 	    message: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Entry(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.timestamp = source["timestamp"];
@@ -171,7 +171,7 @@ export namespace logbus {
 }
 
 export namespace pipeline {
-	
+
 	export class Job {
 	    taskID: string;
 	    title: string;
@@ -189,11 +189,11 @@ export namespace pipeline {
 	    duration?: number;
 	    createdAt: string;
 	    updatedAt: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Job(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.taskID = source["taskID"];
@@ -221,11 +221,11 @@ export namespace pipeline {
 	    fullText: string;
 	    duration: number;
 	    hits?: proofread.Hit[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new SavedTranscript(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.language = source["language"];
@@ -235,7 +235,7 @@ export namespace pipeline {
 	        this.duration = source["duration"];
 	        this.hits = this.convertValues(source["hits"], proofread.Hit);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -258,18 +258,18 @@ export namespace pipeline {
 }
 
 export namespace proofread {
-	
+
 	export class BedrockSettings {
 	    region: string;
 	    accessKey: string;
 	    secretKey: string;
 	    model: string;
 	    proxyURL?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new BedrockSettings(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.region = source["region"];
@@ -283,11 +283,11 @@ export namespace proofread {
 	    apiKey: string;
 	    model: string;
 	    proxyURL?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeminiSettings(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.apiKey = source["apiKey"];
@@ -299,18 +299,18 @@ export namespace proofread {
 	    provider: string;
 	    gemini: GeminiSettings;
 	    bedrock: BedrockSettings;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AISettings(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.provider = source["provider"];
 	        this.gemini = this.convertValues(source["gemini"], GeminiSettings);
 	        this.bedrock = this.convertValues(source["bedrock"], BedrockSettings);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -329,7 +329,7 @@ export namespace proofread {
 		    return a;
 		}
 	}
-	
+
 	export class Entry {
 	    id: string;
 	    right: string;
@@ -342,11 +342,11 @@ export namespace proofread {
 	    createdAt: string;
 	    lastSeen?: string;
 	    contextExample?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Entry(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -369,11 +369,11 @@ export namespace proofread {
 	    suggested: string;
 	    reason: string;
 	    type: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Fix(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -384,7 +384,7 @@ export namespace proofread {
 	        this.type = source["type"];
 	    }
 	}
-	
+
 	export class Hit {
 	    segmentIndex: number;
 	    start: number;
@@ -392,11 +392,11 @@ export namespace proofread {
 	    entryID: string;
 	    original: string;
 	    replacement: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Hit(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.segmentIndex = source["segmentIndex"];
@@ -413,11 +413,11 @@ export namespace proofread {
 	    wrongs: string[];
 	    evidence: string;
 	    confidence: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new NewTerm(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -432,11 +432,11 @@ export namespace proofread {
 	    newTerms: NewTerm[];
 	    model: string;
 	    createdAt: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ProofreadResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.fixes = this.convertValues(source["fixes"], Fix);
@@ -444,7 +444,7 @@ export namespace proofread {
 	        this.model = source["model"];
 	        this.createdAt = source["createdAt"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -467,18 +467,20 @@ export namespace proofread {
 }
 
 export namespace scribe {
-	
+
 	export class CertStatus {
 	    installed: boolean;
+	    trusted: boolean;
 	    name: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CertStatus(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.installed = source["installed"];
+	        this.trusted = source["trusted"];
 	        this.name = source["name"];
 	    }
 	}
@@ -489,11 +491,11 @@ export namespace scribe {
 	    bytes: number;
 	    label: string;
 	    installed: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ModelSummary(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.key = source["key"];
@@ -509,28 +511,42 @@ export namespace scribe {
 	    interceptorAddr: string;
 	    apiAddr: string;
 	    lastError?: string;
-	
+	    systemProxyManaged: boolean;
+	    systemProxyEnabled: boolean;
+	    systemProxyMatched: boolean;
+	    systemProxyAddr?: string;
+	    systemProxyDevice?: string;
+	    systemProxyExpectedAddr?: string;
+	    systemProxyError?: string;
+
 	    static createFrom(source: any = {}) {
 	        return new ProxyStatus(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.running = source["running"];
 	        this.interceptorAddr = source["interceptorAddr"];
 	        this.apiAddr = source["apiAddr"];
 	        this.lastError = source["lastError"];
+	        this.systemProxyManaged = source["systemProxyManaged"];
+	        this.systemProxyEnabled = source["systemProxyEnabled"];
+	        this.systemProxyMatched = source["systemProxyMatched"];
+	        this.systemProxyAddr = source["systemProxyAddr"];
+	        this.systemProxyDevice = source["systemProxyDevice"];
+	        this.systemProxyExpectedAddr = source["systemProxyExpectedAddr"];
+	        this.systemProxyError = source["systemProxyError"];
 	    }
 	}
 	export class TranscribeSettings {
 	    autoEnabled: boolean;
 	    model: string;
 	    language: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new TranscribeSettings(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.autoEnabled = source["autoEnabled"];
@@ -543,11 +559,11 @@ export namespace scribe {
 	    core: string;
 	    commit: string;
 	    buildDate: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new VersionInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.app = source["app"];
@@ -560,17 +576,17 @@ export namespace scribe {
 }
 
 export namespace sphkit {
-	
+
 	export class Config {
 	    downloadDir: string;
 	    interceptorAddr: string;
 	    apiAddr: string;
 	    maxRunning: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.downloadDir = source["downloadDir"];
@@ -591,11 +607,11 @@ export namespace sphkit {
 	    filename: string;
 	    createdAt: string;
 	    updatedAt: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new TaskSummary(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -616,11 +632,11 @@ export namespace sphkit {
 	    total: number;
 	    page: number;
 	    pageSize: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new TaskListResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.tasks = this.convertValues(source["tasks"], TaskSummary);
@@ -628,7 +644,7 @@ export namespace sphkit {
 	        this.page = source["page"];
 	        this.pageSize = source["pageSize"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -651,21 +667,40 @@ export namespace sphkit {
 }
 
 export namespace transcribe {
-	
+
 	export class Segment {
 	    start: number;
 	    end: number;
 	    text: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Segment(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.start = source["start"];
 	        this.end = source["end"];
 	        this.text = source["text"];
+	    }
+	}
+
+}
+
+export namespace xiaoyuzhou {
+
+	export class AuthStatus {
+	    configured: boolean;
+	    valid: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new AuthStatus(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.configured = source["configured"];
+	        this.valid = source["valid"];
 	    }
 	}
 

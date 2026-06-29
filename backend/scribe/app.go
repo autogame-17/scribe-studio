@@ -98,10 +98,11 @@ func (a *App) Startup(ctx context.Context) {
 	}
 
 	// Auto-start the proxy in the background so the WeChat Channels
-	// injection is live by the time the user opens WeChat. Off-thread
-	// because cert install can pop an admin-password dialog (osascript)
-	// and we don't want that to delay window paint. Opt out via
-	// `proxy.autoStart: false` in config.yaml — see channels_open.go.
+	// injection is live by the time the user opens WeChat. Certificate
+	// installation is intentionally not attempted from this background
+	// path; macOS authorization prompts only belong behind the explicit
+	// Install Certificate button. Opt out via `proxy.autoStart: false`
+	// in config.yaml — see channels_open.go.
 	go a.autoStartProxyIfEnabled()
 }
 
