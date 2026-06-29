@@ -279,6 +279,24 @@ export namespace proofread {
 	        this.proxyURL = source["proxyURL"];
 	    }
 	}
+	export class OpenAISettings {
+	    apiKey: string;
+	    baseURL: string;
+	    model: string;
+	    proxyURL?: string;
+
+	    static createFrom(source: any = {}) {
+	        return new OpenAISettings(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.apiKey = source["apiKey"];
+	        this.baseURL = source["baseURL"];
+	        this.model = source["model"];
+	        this.proxyURL = source["proxyURL"];
+	    }
+	}
 	export class GeminiSettings {
 	    apiKey: string;
 	    model: string;
@@ -298,6 +316,7 @@ export namespace proofread {
 	export class AISettings {
 	    provider: string;
 	    gemini: GeminiSettings;
+	    openai: OpenAISettings;
 	    bedrock: BedrockSettings;
 
 	    static createFrom(source: any = {}) {
@@ -308,6 +327,7 @@ export namespace proofread {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.provider = source["provider"];
 	        this.gemini = this.convertValues(source["gemini"], GeminiSettings);
+	        this.openai = this.convertValues(source["openai"], OpenAISettings);
 	        this.bedrock = this.convertValues(source["bedrock"], BedrockSettings);
 	    }
 
@@ -427,6 +447,7 @@ export namespace proofread {
 	        this.confidence = source["confidence"];
 	    }
 	}
+
 	export class ProofreadResult {
 	    fixes: Fix[];
 	    newTerms: NewTerm[];

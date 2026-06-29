@@ -39,7 +39,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { FolderOpen, RefreshCw } from 'lucide-react'
 
-type Provider = 'none' | 'gemini' | 'bedrock' | 'mock'
+type Provider = 'none' | 'gemini' | 'openai' | 'bedrock' | 'mock'
 type AISettings = proofread.AISettings
 
 const TABS = [
@@ -446,6 +446,18 @@ function AITab() {
     setSettings({ ...settings!, ...u } as AISettings)
   }
 
+  function selectProvider(p: Provider) {
+    const next = { ...settings!, provider: p } as AISettings
+    if (p === 'openai') {
+      next.openai = {
+        ...settings!.openai,
+        baseURL: settings!.openai?.baseURL || 'https://api.openai.com/v1',
+        model: settings!.openai?.model || 'gpt-5.5',
+      }
+    }
+    setSettings(next)
+  }
+
   async function save() {
     try {
       await SetAISettings(settings!)
@@ -487,11 +499,11 @@ function AITab() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {(['none', 'gemini', 'bedrock', 'mock'] as Provider[]).map((p) => (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {(['none', 'gemini', 'openai', 'bedrock', 'mock'] as Provider[]).map((p) => (
               <button
                 key={p}
-                onClick={() => patch({ provider: p })}
+                onClick={() => selectProvider(p)}
                 className={cn(
                   'rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
                   settings.provider === p
@@ -499,7 +511,7 @@ function AITab() {
                     : 'border-border/60 text-muted-foreground hover:bg-accent/40'
                 )}
               >
-                {p === 'none' ? '关闭' : p.charAt(0).toUpperCase() + p.slice(1)}
+                {providerLabel(p)}
               </button>
             ))}
           </div>
@@ -550,6 +562,57 @@ function AITab() {
                 patch({ gemini: { ...settings.gemini, proxyURL: v } })
               }
               hint="国内访问 generativelanguage.googleapis.com 一般要走 VPN。常见值：http://127.0.0.1:7890（Clash）或 socks5://127.0.0.1:7891"
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {settings.provider === 'openai' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>OpenAI 兼容</CardTitle>
+            <CardDescription>
+              适用于 OpenAI、sub2api、one-api、LiteLLM、vLLM、Ollama 等兼容 Chat Completions 的端点
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Field label="Base URL">
+              <input
+                value={settings.openai.baseURL}
+                onChange={(e) =>
+                  patch({ openai: { ...settings.openai, baseURL: e.target.value } })
+                }
+                placeholder="https://api.openai.com/v1"
+                className={inputCls + ' font-mono text-xs'}
+              />
+            </Field>
+            <Field label="API Key">
+              <input
+                type="password"
+                value={settings.openai.apiKey}
+                onChange={(e) =>
+                  patch({ openai: { ...settings.openai, apiKey: e.target.value } })
+                }
+                placeholder="sk-..."
+                className={inputCls + ' font-mono text-xs'}
+              />
+            </Field>
+            <Field label="模型">
+              <input
+                value={settings.openai.model}
+                onChange={(e) =>
+                  patch({ openai: { ...settings.openai, model: e.target.value } })
+                }
+                placeholder="gpt-5.5 / claude-sonnet-4-5 / qwen3-coder"
+                className={inputCls + ' font-mono text-xs'}
+              />
+            </Field>
+            <ProxyField
+              value={settings.openai.proxyURL ?? ''}
+              onChange={(v) =>
+                patch({ openai: { ...settings.openai, proxyURL: v } })
+              }
+              hint="本地兼容服务一般留空；访问海外 OpenAI 或中转域名受限时再填 Clash / SOCKS 代理。"
             />
           </CardContent>
         </Card>
@@ -652,6 +715,17 @@ function AITab() {
       </div>
     </div>
   )
+}
+
+function providerLabel(p: Provider) {
+  switch (p) {
+    case 'none':
+      return '关闭'
+    case 'openai':
+      return 'OpenAI 兼容'
+    default:
+      return p.charAt(0).toUpperCase() + p.slice(1)
+  }
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

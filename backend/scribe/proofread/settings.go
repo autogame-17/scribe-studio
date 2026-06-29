@@ -18,8 +18,9 @@ import (
 
 // AISettings is the whole user-configurable surface for LLM proofreading.
 type AISettings struct {
-	Provider string          `json:"provider"` // "none" | "gemini" | "bedrock" | "mock"
+	Provider string          `json:"provider"` // "none" | "gemini" | "openai" | "bedrock" | "mock"
 	Gemini   GeminiSettings  `json:"gemini"`
+	OpenAI   OpenAISettings  `json:"openai"`
 	Bedrock  BedrockSettings `json:"bedrock"`
 }
 
@@ -30,6 +31,16 @@ type GeminiSettings struct {
 	// forwarder. Accepts http://, https://, socks5://, socks5h://.
 	// Empty means direct. Indispensable for users in regions where
 	// generativelanguage.googleapis.com is blocked.
+	ProxyURL string `json:"proxyURL,omitempty"`
+}
+
+type OpenAISettings struct {
+	APIKey  string `json:"apiKey"`
+	BaseURL string `json:"baseURL"` // e.g. "https://api.openai.com/v1"
+	Model   string `json:"model"`   // e.g. "gpt-5.5"
+	// ProxyURL routes the upstream HTTPS call through a local forwarder.
+	// Empty means direct. Local OpenAI-compatible servers normally leave
+	// this blank; hosted relays can reuse the same Clash/SOCKS settings as Gemini.
 	ProxyURL string `json:"proxyURL,omitempty"`
 }
 
@@ -82,6 +93,7 @@ func defaultSettings() AISettings {
 	return AISettings{
 		Provider: "none",
 		Gemini:   GeminiSettings{Model: "gemini-2.5-pro"},
+		OpenAI:   OpenAISettings{BaseURL: "https://api.openai.com/v1", Model: "gpt-5.5"},
 		Bedrock:  BedrockSettings{Model: "anthropic.claude-sonnet-4-5-20250929-v1:0"},
 	}
 }
@@ -99,6 +111,12 @@ func (s *SettingsStore) Set(v AISettings) error {
 	defer s.mu.Unlock()
 	if v.Gemini.Model == "" {
 		v.Gemini.Model = "gemini-2.5-pro"
+	}
+	if v.OpenAI.BaseURL == "" {
+		v.OpenAI.BaseURL = "https://api.openai.com/v1"
+	}
+	if v.OpenAI.Model == "" {
+		v.OpenAI.Model = "gpt-5.5"
 	}
 	if v.Bedrock.Model == "" {
 		v.Bedrock.Model = "anthropic.claude-sonnet-4-5-20250929-v1:0"
@@ -162,14 +180,18 @@ func (s *SettingsStore) AvailableProviders() []string {
 // one selectable option for testing.
 func buildRegistry(s AISettings) *llm.Registry {
 	return llm.BuildRegistry(llm.RegistryConfig{
-		GeminiKey:      s.Gemini.APIKey,
-		GeminiModel:    s.Gemini.Model,
-		GeminiProxy:    s.Gemini.ProxyURL,
-		BedrockRegion:  s.Bedrock.Region,
-		BedrockAccess:  s.Bedrock.AccessKey,
-		BedrockSecret:  s.Bedrock.SecretKey,
-		BedrockModel:   s.Bedrock.Model,
-		BedrockProxy:   s.Bedrock.ProxyURL,
+		GeminiKey:     s.Gemini.APIKey,
+		GeminiModel:   s.Gemini.Model,
+		GeminiProxy:   s.Gemini.ProxyURL,
+		OpenAIKey:     s.OpenAI.APIKey,
+		OpenAIBaseURL: s.OpenAI.BaseURL,
+		OpenAIModel:   s.OpenAI.Model,
+		OpenAIProxy:   s.OpenAI.ProxyURL,
+		BedrockRegion: s.Bedrock.Region,
+		BedrockAccess: s.Bedrock.AccessKey,
+		BedrockSecret: s.Bedrock.SecretKey,
+		BedrockModel:  s.Bedrock.Model,
+		BedrockProxy:  s.Bedrock.ProxyURL,
 	})
 }
 

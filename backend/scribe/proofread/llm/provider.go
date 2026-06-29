@@ -79,6 +79,11 @@ type RegistryConfig struct {
 	GeminiModel string
 	GeminiProxy string
 
+	OpenAIKey     string
+	OpenAIBaseURL string
+	OpenAIModel   string
+	OpenAIProxy   string
+
 	BedrockRegion string
 	BedrockAccess string
 	BedrockSecret string
@@ -102,6 +107,13 @@ func BuildRegistry(c RegistryConfig) *Registry {
 		}
 		reg.Register("gemini", g)
 	}
+	if hasOpenAIConfig(c) {
+		o := NewOpenAIChat(c.OpenAIKey, c.OpenAIBaseURL, c.OpenAIModel)
+		if hc, err := BuildHTTPClient(c.OpenAIProxy, 5*time.Minute); err == nil {
+			o.HTTP = hc
+		}
+		reg.Register("openai", o)
+	}
 	if strings.TrimSpace(c.BedrockRegion) != "" && strings.TrimSpace(c.BedrockAccess) != "" && strings.TrimSpace(c.BedrockSecret) != "" {
 		b := NewBedrockChat(c.BedrockRegion, c.BedrockAccess, c.BedrockSecret, c.BedrockModel)
 		if hc, err := BuildHTTPClient(c.BedrockProxy, 5*time.Minute); err == nil {
@@ -111,4 +123,12 @@ func BuildRegistry(c RegistryConfig) *Registry {
 	}
 	reg.Register("mock", NewMockProvider())
 	return reg
+}
+
+func hasOpenAIConfig(c RegistryConfig) bool {
+	if strings.TrimSpace(c.OpenAIKey) != "" {
+		return true
+	}
+	base := strings.TrimRight(strings.TrimSpace(c.OpenAIBaseURL), "/")
+	return base != "" && base != "https://api.openai.com/v1"
 }

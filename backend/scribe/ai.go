@@ -15,6 +15,7 @@ import (
 // namespace alongside TranscribeSettings.
 type AISettings = proofread.AISettings
 type AIGeminiSettings = proofread.GeminiSettings
+type AIOpenAISettings = proofread.OpenAISettings
 type AIBedrockSettings = proofread.BedrockSettings
 
 // GetAISettings returns the persisted AI configuration. API keys are
@@ -47,6 +48,8 @@ func (a *App) SetAISettings(v AISettings) error {
 	hint := v.Provider
 	if v.Provider == "gemini" && v.Gemini.ProxyURL != "" {
 		hint = fmt.Sprintf("%s via %s", v.Provider, v.Gemini.ProxyURL)
+	} else if v.Provider == "openai" && v.OpenAI.ProxyURL != "" {
+		hint = fmt.Sprintf("%s via %s", v.Provider, v.OpenAI.ProxyURL)
 	} else if v.Provider == "bedrock" && v.Bedrock.ProxyURL != "" {
 		hint = fmt.Sprintf("%s via %s", v.Provider, v.Bedrock.ProxyURL)
 	}
