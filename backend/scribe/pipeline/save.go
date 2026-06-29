@@ -67,10 +67,32 @@ func saveTranscriptJSON(taskID string, payload *SavedTranscript) (string, error)
 	return path, nil
 }
 
+// transcriptOutputBase returns the on-disk base path (without extension)
+// where transcript artifacts (SRT, MD) should be written for a given
+// video. When the video lives under a `<root>/<author>/视频/<file>.mp4`
+// layout (the new per-author scheme from client.go's default template),
+// transcripts go into the sibling `字幕/` folder so videos and subtitles
+// stay cleanly separated. For any other layout — including the legacy
+// flat `~/Downloads/<file>.mp4` — we fall back to writing next to the
+// video so existing records keep working and players can auto-load the
+// subtitle.
+func transcriptOutputBase(videoPath string) string {
+	videoDir := filepath.Dir(videoPath)
+	if filepath.Base(videoDir) == "视频" {
+		subtitleDir := filepath.Join(filepath.Dir(videoDir), "字幕")
+		if err := os.MkdirAll(subtitleDir, 0o755); err == nil {
+			name := strings.TrimSuffix(filepath.Base(videoPath), filepath.Ext(videoPath))
+			return filepath.Join(subtitleDir, name)
+		}
+	}
+	return strings.TrimSuffix(videoPath, filepath.Ext(videoPath))
+}
+
 // saveSRT writes `{video}.zh.srt` next to the original video so
-// players (IINA, VLC, mpv) auto-load it.
+// players (IINA, VLC, mpv) auto-load it. Under the per-author layout
+// (see transcriptOutputBase) the SRT lands in the sibling 字幕/ folder.
 func saveSRT(videoPath string, r *transcribe.Result) (string, error) {
-	base := strings.TrimSuffix(videoPath, filepath.Ext(videoPath))
+	base := transcriptOutputBase(videoPath)
 	lang := r.Language
 	if lang == "" {
 		lang = "und"
@@ -91,10 +113,12 @@ func saveSRT(videoPath string, r *transcribe.Result) (string, error) {
 	return path, nil
 }
 
-// saveMD writes a minimal Markdown transcript next to the video.
-// Segments become paragraphs; timestamps go inline as subtle cues.
+// saveMD writes a minimal Markdown transcript alongside the SRT (in
+// the same 字幕/ folder under the per-author layout, or next to the
+// video for legacy flat layouts). Segments become paragraphs;
+// timestamps go inline as subtle cues.
 func saveMD(videoPath, title string, r *transcribe.Result) (string, error) {
-	base := strings.TrimSuffix(videoPath, filepath.Ext(videoPath))
+	base := transcriptOutputBase(videoPath)
 	lang := r.Language
 	if lang == "" {
 		lang = "und"

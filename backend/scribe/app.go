@@ -96,6 +96,13 @@ func (a *App) Startup(ctx context.Context) {
 		a.mu.Unlock()
 		logbus.Info("external", "manager ready")
 	}
+
+	// Auto-start the proxy in the background so the WeChat Channels
+	// injection is live by the time the user opens WeChat. Off-thread
+	// because cert install can pop an admin-password dialog (osascript)
+	// and we don't want that to delay window paint. Opt out via
+	// `proxy.autoStart: false` in config.yaml — see channels_open.go.
+	go a.autoStartProxyIfEnabled()
 }
 
 // Shutdown gives us a chance to cleanly stop the pipeline and the proxy
