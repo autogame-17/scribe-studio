@@ -17,8 +17,8 @@ permissions:
 
 jobs:
   # macOS matrix: arm64 (Apple Silicon, macos-14) + amd64 (Intel, macos-13).
-  # Each job ships its own arch-specific DMG; the upload step tags artifacts
-  # by arch so the publish step can attach both files to one GitHub release.
+  # Each job ships its own native DMG; the arm64 build avoids the future macOS
+  # "Intel chip App" deprecation warning on Apple Silicon.
   macos:
     strategy:
       fail-fast: false
@@ -129,7 +129,7 @@ jobs:
                 xattr -dr com.apple.quarantine /Applications/Scribe.app
 
             Pick the DMG that matches your Mac:
-              - darwin-arm64: Apple Silicon (M1 / M2 / M3 / M4)
+              - darwin-arm64: Apple Silicon (M1 / M2 / M3 / M4) - native
               - darwin-amd64: Intel
               - windows-amd64: Windows 10/11 (x64)
 

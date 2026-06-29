@@ -44,7 +44,21 @@ ldflags=(
 echo "==> Building Scribe ${version}"
 echo "    commit=${commit} date=${date_utc} core=${core_rev}"
 
+platform_args=()
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  host_arch="$(uname -m)"
+  case "$host_arch" in
+    arm64)  host_archid="arm64" ;;
+    x86_64) host_archid="amd64" ;;
+    *)      echo "unsupported macOS arch: $host_arch" >&2; exit 2 ;;
+  esac
+  platform="darwin/${host_archid}"
+  platform_args=(-platform "$platform")
+  echo "    platform=${platform}"
+fi
+
 wails build \
+  "${platform_args[@]}" \
   -ldflags "${ldflags[*]}" \
   "${@:2}"
 
@@ -76,4 +90,8 @@ if [[ -d "$app" ]]; then
   # executable, but not after we've added new files under Resources/).
   codesign --force --deep --sign - "$app"
   echo "==> resigned $app"
+  if [[ -f "$app/Contents/MacOS/scribe" ]]; then
+    echo "==> executable arch:"
+    lipo -info "$app/Contents/MacOS/scribe"
+  fi
 fi
