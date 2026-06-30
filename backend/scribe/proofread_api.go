@@ -229,6 +229,7 @@ func (a *App) AcceptNewTermFromCache(taskID, termID, cacheKey string) (GlossaryE
 		Source:         proofread.SourceUser,
 		Confidence:     term.Confidence,
 		ContextExample: term.Evidence,
+		HitCount:       1,
 	}
 	saved, err := p.Glossary().Upsert(entry)
 	if err != nil {

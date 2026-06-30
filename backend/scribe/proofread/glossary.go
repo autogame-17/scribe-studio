@@ -34,9 +34,10 @@ const (
 	SourceUser = "user"
 )
 
-// Entry is one replacement rule. `Wrong` may contain multiple variants
-// that all map to the same canonical `Right`. Matching is case-insensitive;
-// at apply time we process longest Wrong first so "依沃弗" wins over "依沃".
+// Entry is one glossary item. `Wrong` may contain multiple variants
+// that all map to the same canonical `Right`; entries with an empty
+// Wrong list are still useful as known terms in the LLM prompt, but
+// simply do not participate in deterministic replacement.
 type Entry struct {
 	ID             string   `json:"id"`
 	Right          string   `json:"right"`
@@ -124,6 +125,10 @@ func (g *Glossary) unmarshal(raw []byte) error {
 	g.mu.Lock()
 	g.Version = shape.Version
 	g.Entries = shape.Entries
+	for i := range g.Entries {
+		g.Entries[i].Right = strings.TrimSpace(g.Entries[i].Right)
+		g.Entries[i].Wrong = cleanWrongList(g.Entries[i].Wrong)
+	}
 	g.mu.Unlock()
 	return nil
 }
@@ -155,6 +160,8 @@ func loadSeed() ([]Entry, error) {
 		// Ensure timestamps + counts are initialised.
 		now := time.Now().Format(time.RFC3339)
 		for i := range shape.Entries {
+			shape.Entries[i].Right = strings.TrimSpace(shape.Entries[i].Right)
+			shape.Entries[i].Wrong = cleanWrongList(shape.Entries[i].Wrong)
 			if shape.Entries[i].CreatedAt == "" {
 				shape.Entries[i].CreatedAt = now
 			}
@@ -226,8 +233,10 @@ func entryMatches(e Entry, qLower string) bool {
 func (g *Glossary) Upsert(e Entry) (Entry, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if e.Right == "" || len(e.Wrong) == 0 {
-		return Entry{}, errors.New("right and wrong[] are required")
+	e.Right = strings.TrimSpace(e.Right)
+	e.Wrong = cleanWrongList(e.Wrong)
+	if e.Right == "" {
+		return Entry{}, errors.New("right is required")
 	}
 	if e.Category == "" {
 		e.Category = CategoryCustom
@@ -239,6 +248,7 @@ func (g *Glossary) Upsert(e Entry) (Entry, error) {
 		e.ID = fmt.Sprintf("user-%d", time.Now().UnixNano())
 		e.CreatedAt = time.Now().Format(time.RFC3339)
 		g.Entries = append(g.Entries, e)
+		g.Version++
 	} else {
 		found := false
 		for i, x := range g.Entries {
@@ -252,6 +262,7 @@ func (g *Glossary) Upsert(e Entry) (Entry, error) {
 					e.HitCount = x.HitCount
 				}
 				g.Entries[i] = e
+				g.Version++
 				found = true
 				break
 			}
@@ -261,6 +272,7 @@ func (g *Glossary) Upsert(e Entry) (Entry, error) {
 				e.CreatedAt = time.Now().Format(time.RFC3339)
 			}
 			g.Entries = append(g.Entries, e)
+			g.Version++
 		}
 	}
 	return e, nil
@@ -273,6 +285,7 @@ func (g *Glossary) Delete(id string) error {
 	for i, e := range g.Entries {
 		if e.ID == id {
 			g.Entries = append(g.Entries[:i], g.Entries[i+1:]...)
+			g.Version++
 			return nil
 		}
 	}
@@ -290,6 +303,7 @@ func (g *Glossary) Learn(original, suggested, context string) (Entry, error) {
 		if e.Right == suggested {
 			if !containsFoldCase(e.Wrong, original) {
 				g.Entries[i].Wrong = append(g.Entries[i].Wrong, original)
+				g.Version++
 			}
 			g.Entries[i].HitCount++
 			g.Entries[i].LastSeen = time.Now().Format(time.RFC3339)
@@ -312,6 +326,7 @@ func (g *Glossary) Learn(original, suggested, context string) (Entry, error) {
 		ContextExample: context,
 	}
 	g.Entries = append(g.Entries, entry)
+	g.Version++
 	return entry, nil
 }
 
@@ -323,6 +338,24 @@ func containsFoldCase(xs []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func cleanWrongList(xs []string) []string {
+	out := make([]string, 0, len(xs))
+	seen := map[string]bool{}
+	for _, x := range xs {
+		x = strings.TrimSpace(x)
+		if x == "" {
+			continue
+		}
+		key := strings.ToLower(x)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, x)
+	}
+	return out
 }
 
 // Apply rewrites each segment with all matching glossary rules and

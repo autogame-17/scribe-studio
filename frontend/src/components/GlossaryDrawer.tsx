@@ -193,14 +193,18 @@ function EntryRow({
           )}
         </div>
         <div className="mt-1 flex flex-wrap gap-1">
-          {entry.wrong.map((w, i) => (
-            <code
-              key={i}
-              className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
-            >
-              {w}
-            </code>
-          ))}
+          {(entry.wrong ?? []).length > 0 ? (
+            (entry.wrong ?? []).map((w, i) => (
+              <code
+                key={i}
+                className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+              >
+                {w}
+              </code>
+            ))
+          ) : (
+            <span className="text-[11px] text-muted-foreground">仅作为 AI 术语提示</span>
+          )}
         </div>
       </div>
       <button
@@ -224,7 +228,7 @@ function EntryEditor({
   onSave: (e: Entry) => void
 }) {
   const [right, setRight] = useState(entry.right)
-  const [wrongsText, setWrongsText] = useState(entry.wrong.join('\n'))
+  const [wrongsText, setWrongsText] = useState((entry.wrong ?? []).join('\n'))
   const [category, setCategory] = useState(entry.category || 'custom')
 
   function submit() {
@@ -232,8 +236,8 @@ function EntryEditor({
       .split('\n')
       .map((s) => s.trim())
       .filter(Boolean)
-    if (!right.trim() || wrongs.length === 0) {
-      toast.error('right 和 wrong 至少一条不能为空')
+    if (!right.trim()) {
+      toast.error('Right 不能为空')
       return
     }
     onSave({
@@ -263,7 +267,7 @@ function EntryEditor({
         </label>
         <label className="block">
           <span className="mb-1 block text-[11px] text-muted-foreground">
-            Wrong（一行一条，大小写不敏感）
+            Wrong（一行一条，可留空；留空时只作为 AI 术语提示）
           </span>
           <textarea
             value={wrongsText}

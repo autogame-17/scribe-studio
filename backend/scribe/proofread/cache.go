@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/autogame-17/scribe-studio/backend/scribe/runtime"
@@ -31,7 +32,7 @@ func CacheKey(fullText, providerName, model string, glossaryVersion int) string 
 	h.Write([]byte{0})
 	h.Write([]byte(model))
 	h.Write([]byte{0})
-	h.Write([]byte{byte(glossaryVersion)})
+	h.Write([]byte(strconv.Itoa(glossaryVersion)))
 	h.Write([]byte{0})
 	h.Write([]byte(fullText))
 	return hex.EncodeToString(h.Sum(nil))
