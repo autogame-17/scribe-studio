@@ -12,9 +12,13 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
+	goruntime "runtime"
 	"sync"
 
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 
 	"wx_channel/internal/api"
 	"wx_channel/internal/config"
@@ -51,7 +55,13 @@ type Instance struct {
 // New loads config + certificates eagerly so the Wails UI can render cert
 // status (installed / not installed / path) before the user hits Start.
 func New(version, mode string) (*Instance, error) {
+	viper.Reset()
 	cfg := config.New(version, mode)
+	if mode == "release" {
+		if err := moveStateRoot(cfg); err != nil {
+			return nil, err
+		}
+	}
 	if err := cfg.LoadConfig(); err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
 	}
@@ -59,6 +69,53 @@ func New(version, mode string) (*Instance, error) {
 		cfg:       cfg,
 		certFiles: config.LoadCertFiles(),
 	}, nil
+}
+
+func moveStateRoot(cfg *config.Config) error {
+	root, err := appSupportDir()
+	if err != nil {
+		return fmt.Errorf("resolve app support dir: %w", err)
+	}
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		return fmt.Errorf("create app support dir: %w", err)
+	}
+	cfg.RootDir = root
+	cfg.FullPath = filepath.Join(root, cfg.Filename)
+	cfg.Existing = fileExists(cfg.FullPath)
+	viper.SetConfigFile(cfg.FullPath)
+	return nil
+}
+
+func appSupportDir() (string, error) {
+	const appName = "Scribe"
+	switch goruntime.GOOS {
+	case "darwin":
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(home, "Library", "Application Support", appName), nil
+	case "windows":
+		if appData := os.Getenv("APPDATA"); appData != "" {
+			return filepath.Join(appData, appName), nil
+		}
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(home, "AppData", "Roaming", appName), nil
+	default:
+		cfg, err := os.UserConfigDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(cfg, appName), nil
+	}
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 // Config returns the loaded config so callers can read paths for UI display.
