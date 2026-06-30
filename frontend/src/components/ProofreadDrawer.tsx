@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { useCallback, useState } from 'react'
-import { X, Sparkles, Check, XCircle, BookPlus, RefreshCw } from 'lucide-react'
+import { X, Sparkles, Check, XCircle, BookPlus, RefreshCw, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -59,10 +59,12 @@ export function ProofreadDrawer({
   const [newTerms, setNewTerms] = useState<NewTerm[]>([])
   const [model, setModel] = useState<string>('')
   const [ran, setRan] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const run = useCallback(async (force = false) => {
     if (!taskID) return
     setLoading(true)
+    setError(null)
     try {
       if (force) {
         await ClearProofreadCache()
@@ -79,7 +81,7 @@ export function ProofreadDrawer({
         toast.success(`LLM 返回 ${res.fixes?.length ?? 0} 处修正 / ${res.newTerms?.length ?? 0} 个新词`)
       }
     } catch (e) {
-      toast.error('校对失败：' + String(e))
+      setError(cleanErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -216,8 +218,91 @@ export function ProofreadDrawer({
           )}
         </div>
       </aside>
+      {error && (
+        <ProofreadErrorDialog
+          message={error}
+          loading={loading}
+          onClose={() => setError(null)}
+          onRetry={() => run(true)}
+        />
+      )}
     </>
   )
+}
+
+function ProofreadErrorDialog({
+  message,
+  loading,
+  onClose,
+  onRetry,
+}: {
+  message: string
+  loading: boolean
+  onClose: () => void
+  onRetry: () => void
+}) {
+  const hint = proofreadErrorHint(message)
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+      <section
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="proofread-error-title"
+        className="w-full max-w-lg rounded-xl border border-border bg-background p-5 shadow-2xl"
+      >
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+            <AlertCircle className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 id="proofread-error-title" className="text-base font-semibold">
+              校对失败
+            </h3>
+            <p className="mt-2 break-words rounded-md border border-border/60 bg-muted/40 p-3 font-mono text-xs leading-5 text-foreground">
+              {message}
+            </p>
+            {hint && (
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">{hint}</p>
+            )}
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              详细 provider、耗时和文本规模会写入「日志」页。
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="关闭弹窗"
+            title="关闭弹窗"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={onClose}>
+            关闭
+          </Button>
+          <Button size="sm" onClick={onRetry} disabled={loading} className="gap-1.5">
+            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+            {loading ? '重跑中…' : '清缓存重跑'}
+          </Button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function cleanErrorMessage(e: unknown) {
+  return String(e).replace(/^Error:\s*/, '')
+}
+
+function proofreadErrorHint(message: string) {
+  if (message.includes('context deadline exceeded')) {
+    return '这通常表示上游 LLM 在本次校对超时时间内没有返回。长稿会拆成多个 chunk；可以重跑一次，或换更快的模型/中转/代理后再试。'
+  }
+  if (message.includes('ai provider not configured')) {
+    return '还没有配置可用的 AI Provider。请到「设置 → AI 校对」填写并测试连通。'
+  }
+  return ''
 }
 
 function FixRow({

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/autogame-17/scribe-studio/backend/scribe/logbus"
 	"github.com/autogame-17/scribe-studio/backend/scribe/proofread"
 	"github.com/autogame-17/scribe-studio/backend/scribe/transcribe"
 )
@@ -16,6 +17,8 @@ import (
 type ProofreadResult = proofread.ProofreadResult
 type ProofreadFix = proofread.Fix
 type ProofreadNewTerm = proofread.NewTerm
+
+const proofreadTimeout = 10 * time.Minute
 
 // ProofreadTranscript runs the configured LLM over the given task's
 // transcript. Returns cached results when available; cache is keyed
@@ -49,9 +52,43 @@ func (a *App) ProofreadTranscript(taskID string) (*ProofreadResult, error) {
 	g := p.Glossary()
 	pr := proofread.NewProofreader(provider, g)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	started := time.Now()
+	logbus.Info(
+		"proofread",
+		"start: task=%s provider=%s chars=%d segments=%d timeout=%s",
+		taskID,
+		provider.Name(),
+		len(payload.FullText),
+		len(payload.Segments),
+		proofreadTimeout,
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), proofreadTimeout)
 	defer cancel()
 	result, _, err := pr.Run(ctx, payload.FullText, segs)
+	elapsed := time.Since(started).Round(time.Millisecond)
+	if err != nil {
+		logbus.Error(
+			"proofread",
+			"failed after %s: task=%s provider=%s chars=%d segments=%d error=%v",
+			elapsed,
+			taskID,
+			provider.Name(),
+			len(payload.FullText),
+			len(payload.Segments),
+			err,
+		)
+		return result, err
+	}
+	logbus.Info(
+		"proofread",
+		"done in %s: task=%s provider=%s fixes=%d newTerms=%d",
+		elapsed,
+		taskID,
+		provider.Name(),
+		len(result.Fixes),
+		len(result.NewTerms),
+	)
 	return result, err
 }
 
