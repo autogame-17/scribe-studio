@@ -6,9 +6,9 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import {
   ProofreadTranscript,
-  AcceptFix,
-  RejectFix,
-  AcceptNewTerm,
+  AcceptFixFromCache,
+  RejectFixFromCache,
+  AcceptNewTermFromCache,
   ClearProofreadCache,
 } from '../../wailsjs/go/scribe/App'
 import type { pipeline, proofread } from '../../wailsjs/go/models'
@@ -60,6 +60,7 @@ export function ProofreadDrawer({
   const [model, setModel] = useState<string>('')
   const [ran, setRan] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [cacheKey, setCacheKey] = useState('')
 
   const run = useCallback(async (force = false) => {
     if (!taskID) return
@@ -73,6 +74,7 @@ export function ProofreadDrawer({
       setFixes(res.fixes ?? [])
       setNewTerms(res.newTerms ?? [])
       setModel(res.model ?? '')
+      setCacheKey(res.cacheKey ?? '')
       setRan(true)
       const total = (res.fixes?.length ?? 0) + (res.newTerms?.length ?? 0)
       if (total === 0) {
@@ -90,7 +92,7 @@ export function ProofreadDrawer({
   async function accept(fix: Fix, learn: boolean) {
     if (!taskID) return
     try {
-      const saved = await AcceptFix(taskID, fix.id, learn)
+      const saved = await AcceptFixFromCache(taskID, fix.id, cacheKey, learn)
       setFixes((prev) => prev.filter((f) => f.id !== fix.id))
       onApplied(saved)
       toast.success(learn ? '已替换并加入词表' : '已替换')
@@ -102,7 +104,7 @@ export function ProofreadDrawer({
   async function reject(fix: Fix) {
     if (!taskID) return
     try {
-      await RejectFix(taskID, fix.id)
+      await RejectFixFromCache(taskID, fix.id, cacheKey)
       setFixes((prev) => prev.filter((f) => f.id !== fix.id))
     } catch (e) {
       toast.error(String(e))
@@ -112,7 +114,7 @@ export function ProofreadDrawer({
   async function addTerm(t: NewTerm) {
     if (!taskID) return
     try {
-      await AcceptNewTerm(taskID, t.id)
+      await AcceptNewTermFromCache(taskID, t.id, cacheKey)
       setNewTerms((prev) => prev.filter((x) => x.id !== t.id))
       toast.success(`已加入词表：${t.term}`)
     } catch (e) {

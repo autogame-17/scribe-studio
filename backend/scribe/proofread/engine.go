@@ -38,10 +38,11 @@ type NewTerm struct {
 // ProofreadResult is what App.ProofreadTranscript returns. Empty
 // slices mean "LLM had nothing to say" — that's success, not a bug.
 type ProofreadResult struct {
-	Fixes    []Fix     `json:"fixes"`
-	NewTerms []NewTerm `json:"newTerms"`
-	Model    string    `json:"model"`
-	CreatedAt string   `json:"createdAt"`
+	Fixes     []Fix     `json:"fixes"`
+	NewTerms  []NewTerm `json:"newTerms"`
+	Model     string    `json:"model"`
+	CreatedAt string    `json:"createdAt"`
+	CacheKey  string    `json:"cacheKey,omitempty"`
 }
 
 // Proofread is the engine: builds the prompt, splits long transcripts,
@@ -257,6 +258,7 @@ func (pr *Proofreader) Run(ctx context.Context, fullText string, segs []SegmentL
 	model := pr.provider.Name()
 	key := CacheKey(fullText, model, model, pr.glossaryVersion)
 	if cached, ok := LoadCached(key); ok {
+		cached.CacheKey = key
 		return cached, true, nil
 	}
 
@@ -264,6 +266,7 @@ func (pr *Proofreader) Run(ctx context.Context, fullText string, segs []SegmentL
 	if err != nil {
 		return nil, false, err
 	}
+	result.CacheKey = key
 	if err := SaveCached(key, result); err != nil {
 		// Non-fatal: cache miss is tolerable, return the fresh result.
 		return result, false, nil

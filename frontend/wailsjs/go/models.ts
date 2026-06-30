@@ -453,6 +453,7 @@ export namespace proofread {
 	    newTerms: NewTerm[];
 	    model: string;
 	    createdAt: string;
+	    cacheKey?: string;
 
 	    static createFrom(source: any = {}) {
 	        return new ProofreadResult(source);
@@ -464,6 +465,7 @@ export namespace proofread {
 	        this.newTerms = this.convertValues(source["newTerms"], NewTerm);
 	        this.model = source["model"];
 	        this.createdAt = source["createdAt"];
+	        this.cacheKey = source["cacheKey"];
 	    }
 
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -726,4 +728,3 @@ export namespace xiaoyuzhou {
 	}
 
 }
-

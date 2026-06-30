@@ -6,8 +6,16 @@ export function AcceptFix(arg1, arg2, arg3) {
   return window['go']['scribe']['App']['AcceptFix'](arg1, arg2, arg3);
 }
 
+export function AcceptFixFromCache(arg1, arg2, arg3, arg4) {
+  return window['go']['scribe']['App']['AcceptFixFromCache'](arg1, arg2, arg3, arg4);
+}
+
 export function AcceptNewTerm(arg1, arg2) {
   return window['go']['scribe']['App']['AcceptNewTerm'](arg1, arg2);
+}
+
+export function AcceptNewTermFromCache(arg1, arg2, arg3) {
+  return window['go']['scribe']['App']['AcceptNewTermFromCache'](arg1, arg2, arg3);
 }
 
 export function AddExternalURL(arg1) {
@@ -128,6 +136,10 @@ export function ProofreadTranscript(arg1) {
 
 export function RejectFix(arg1, arg2) {
   return window['go']['scribe']['App']['RejectFix'](arg1, arg2);
+}
+
+export function RejectFixFromCache(arg1, arg2, arg3) {
+  return window['go']['scribe']['App']['RejectFixFromCache'](arg1, arg2, arg3);
 }
 
 export function RemoveExternal(arg1) {

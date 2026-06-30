@@ -11,7 +11,11 @@ import {transcribe} from '../models';
 
 export function AcceptFix(arg1:string,arg2:string,arg3:boolean):Promise<pipeline.SavedTranscript>;
 
+export function AcceptFixFromCache(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<pipeline.SavedTranscript>;
+
 export function AcceptNewTerm(arg1:string,arg2:string):Promise<proofread.Entry>;
+
+export function AcceptNewTermFromCache(arg1:string,arg2:string,arg3:string):Promise<proofread.Entry>;
 
 export function AddExternalURL(arg1:external.AddRequest):Promise<external.Task>;
 
@@ -72,6 +76,8 @@ export function PickDownloadDir():Promise<string>;
 export function ProofreadTranscript(arg1:string):Promise<proofread.ProofreadResult>;
 
 export function RejectFix(arg1:string,arg2:string):Promise<void>;
+
+export function RejectFixFromCache(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function RemoveExternal(arg1:string):Promise<void>;
 

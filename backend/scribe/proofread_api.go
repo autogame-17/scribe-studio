@@ -102,6 +102,13 @@ func (a *App) ProofreadTranscript(taskID string) (*ProofreadResult, error) {
 // user wants this applied globally; false for one-off punctuation /
 // grammar fixes that don't generalise.
 func (a *App) AcceptFix(taskID, fixID string, learnToGlossary bool) (*SavedTranscript, error) {
+	return a.AcceptFixFromCache(taskID, fixID, "", learnToGlossary)
+}
+
+// AcceptFixFromCache is the cache-key aware variant used by the UI while a
+// proofread drawer is open. The cache key pins all accept/reject operations to
+// the same LLM result even as earlier accepts mutate and save the transcript.
+func (a *App) AcceptFixFromCache(taskID, fixID, cacheKey string, learnToGlossary bool) (*SavedTranscript, error) {
 	a.mu.Lock()
 	p := a.pipeline
 	a.mu.Unlock()
@@ -116,7 +123,7 @@ func (a *App) AcceptFix(taskID, fixID string, learnToGlossary bool) (*SavedTrans
 	// Look up the fix in the cached proofread result. We don't
 	// re-run the LLM — the user already saw the suggestion and
 	// accepted it.
-	fix, err := a.findFix(taskID, fixID, payload)
+	fix, err := a.findFix(taskID, fixID, cacheKey, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -149,6 +156,13 @@ func (a *App) AcceptFix(taskID, fixID string, learnToGlossary bool) (*SavedTrans
 
 // RejectFix records a user rejection so subsequent runs don't re-surface it.
 func (a *App) RejectFix(taskID, fixID string) error {
+	return a.RejectFixFromCache(taskID, fixID, "")
+}
+
+// RejectFixFromCache records a rejection against the proofread result the user
+// is currently reviewing, rather than recomputing the key from text that may
+// already have been modified by accepted fixes.
+func (a *App) RejectFixFromCache(taskID, fixID, cacheKey string) error {
 	a.mu.Lock()
 	store := a.aiSettings
 	a.mu.Unlock()
@@ -168,13 +182,22 @@ func (a *App) RejectFix(taskID, fixID string) error {
 		glossaryVersion = p.Glossary().Version
 	}
 	a.mu.Unlock()
-	key := proofread.CacheKey(payload.FullText, providerName, providerName, glossaryVersion)
-	return proofread.MarkRejected(key, fixID)
+	if cacheKey == "" {
+		cacheKey = proofread.CacheKey(payload.FullText, providerName, providerName, glossaryVersion)
+	}
+	return proofread.MarkRejected(cacheKey, fixID)
 }
 
 // AcceptNewTerm promotes an LLM-suggested glossary candidate into
 // the user's personal dictionary.
 func (a *App) AcceptNewTerm(taskID, termID string) (GlossaryEntry, error) {
+	return a.AcceptNewTermFromCache(taskID, termID, "")
+}
+
+// AcceptNewTermFromCache promotes a term from the currently displayed
+// proofread result. The explicit cache key keeps the drawer usable after other
+// fixes have already changed and saved the transcript text.
+func (a *App) AcceptNewTermFromCache(taskID, termID, cacheKey string) (GlossaryEntry, error) {
 	a.mu.Lock()
 	p := a.pipeline
 	a.mu.Unlock()
@@ -185,7 +208,7 @@ func (a *App) AcceptNewTerm(taskID, termID string) (GlossaryEntry, error) {
 	if err != nil {
 		return GlossaryEntry{}, err
 	}
-	result, err := a.lastProofreadResult(taskID, payload)
+	result, err := a.lastProofreadResult(taskID, cacheKey, payload)
 	if err != nil {
 		return GlossaryEntry{}, err
 	}
@@ -219,8 +242,8 @@ func (a *App) AcceptNewTerm(taskID, termID string) (GlossaryEntry, error) {
 
 // findFix retrieves a specific fix from the cached proofread result,
 // loading the cache (not hitting the LLM).
-func (a *App) findFix(taskID, fixID string, payload *SavedTranscript) (*ProofreadFix, error) {
-	result, err := a.lastProofreadResult(taskID, payload)
+func (a *App) findFix(taskID, fixID, cacheKey string, payload *SavedTranscript) (*ProofreadFix, error) {
+	result, err := a.lastProofreadResult(taskID, cacheKey, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +256,7 @@ func (a *App) findFix(taskID, fixID string, payload *SavedTranscript) (*Proofrea
 }
 
 // lastProofreadResult returns the cached result, if any.
-func (a *App) lastProofreadResult(taskID string, payload *SavedTranscript) (*ProofreadResult, error) {
+func (a *App) lastProofreadResult(taskID, cacheKey string, payload *SavedTranscript) (*ProofreadResult, error) {
 	_ = taskID
 	a.mu.Lock()
 	store := a.aiSettings
@@ -250,8 +273,11 @@ func (a *App) lastProofreadResult(taskID string, payload *SavedTranscript) (*Pro
 	if p != nil && p.Glossary() != nil {
 		glossaryVersion = p.Glossary().Version
 	}
-	key := proofread.CacheKey(payload.FullText, provider.Name(), provider.Name(), glossaryVersion)
-	if cached, ok := proofread.LoadCached(key); ok {
+	if cacheKey == "" {
+		cacheKey = proofread.CacheKey(payload.FullText, provider.Name(), provider.Name(), glossaryVersion)
+	}
+	if cached, ok := proofread.LoadCached(cacheKey); ok {
+		cached.CacheKey = cacheKey
 		return cached, nil
 	}
 	return nil, errors.New("no cached proofread result; run proofread first")
